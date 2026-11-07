@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const os = require('os');
 const pool = require('./db');
 
 const app = express();
@@ -435,6 +436,62 @@ app.get('/api/ventas/:id', async (req, res) => {
             message: 'Error al obtener el detalle del comprobante.'
         });
     }
+});
+
+// =========================================================================
+// CUSTOMER-FACING DISPLAY (CFD) EN MEMORIA RAM (5A OMNI-SYNC)
+// Sincronización en tiempo real PC ↔ Celular sin alterar MySQL
+// =========================================================================
+function getLocalIpAddress() {
+    try {
+        const interfaces = os.networkInterfaces();
+        for (const devName in interfaces) {
+            const iface = interfaces[devName];
+            for (let i = 0; i < iface.length; i++) {
+                const alias = iface[i];
+                if (alias.family === 'IPv4' && !alias.internal) {
+                    return alias.address;
+                }
+            }
+        }
+    } catch {
+        // Fallback seguro
+    }
+    return 'localhost';
+}
+
+let estadoVisorCliente = {
+    modo: 'IDLE', // 'IDLE' | 'CARRITO' | 'PAGO_YAPE' | 'PAGO_TARJETA' | 'COMPROBANTE'
+    items: [],
+    total: 0,
+    subtotalNeto: 0,
+    igv: 0,
+    metodoPago: 'Efectivo',
+    efectivoRecibido: 0,
+    vuelto: 0,
+    cliente: 'Público General',
+    comprobante: null,
+    updatedAt: Date.now()
+};
+
+app.get('/api/visor-estado', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    return res.status(200).json({
+        ...estadoVisorCliente,
+        localIp: getLocalIpAddress()
+    });
+});
+
+app.post('/api/visor-estado', (req, res) => {
+    estadoVisorCliente = {
+        ...estadoVisorCliente,
+        ...req.body,
+        updatedAt: Date.now()
+    };
+    return res.status(200).json({
+        success: true,
+        updatedAt: estadoVisorCliente.updatedAt
+    });
 });
 
 // =========================================================================

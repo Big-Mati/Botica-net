@@ -1,0 +1,1102 @@
+/* ==========================================================================
+   FUSIÓN MAESTRA: "Keylight + Gridwork Co" (Refinamiento 1A + 2A + 3A + 4A)
+   Columna Izquierda (50%): Atmósfera Cinemática "Keylight & Botanical Apothecary"
+   Columna Derecha (50%): Quirófano Blanco Porcelana & Usabilidad Táctil "Gridwork Co"
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --emerald-500: #10b981;
+  --emerald-600: #059669;
+  --emerald-50: #ecfdf5;
+  --emerald-100: #d1fae5;
+  --emerald-200: #a7f3d0;
+  --slate-900: #0f172a;
+  --slate-800: #1e293b;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-500: #64748b;
+  --slate-400: #94a3b8;
+  --slate-300: #cbd5e1;
+  --slate-200: #e2e8f0;
+  --slate-100: #f1f5f9;
+  --slate-50: #f8fafc;
+}
+
+/* ==========================================================================
+   🏛️ 1. ARQUITECTURA GENERAL (PROPORCIÓN ASIMÉTRICA 53% / 47%)
+   ========================================================================== */
+.login-master-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 53% 47%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background-color: #ffffff;
+  color: #0f172a;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   🌿 2. LADO IZQUIERDO (53%): ESCAPARATE NATURAL GRIDWORK CO
+   ========================================================================== */
+.split-left-stage {
+  position: relative;
+  margin: 0;
+  height: 100vh;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: #08090b;
+  background-image: 
+    linear-gradient(135deg, rgba(8, 10, 14, 0.96) 0%, rgba(12, 14, 18, 0.92) 100%),
+    url('https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80');
+  background-size: cover;
+  background-position: center;
+  padding: 36px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  color: #ffffff;
+  overflow: hidden;
+  box-sizing: border-box;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+/* Videos Cinemáticos Alternados (video1.mp4 y video2.mp4) con Disolución Cruzada */
+.split-left-video {
+  position: absolute;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  object-fit: cover;
+  object-position: center center;
+  pointer-events: none;
+  filter: contrast(104%) saturate(112%);
+  transform: perspective(1200px) rotateX(calc(var(--py, 0) * -2.8deg)) rotateY(calc(var(--px, 0) * 3.6deg)) translate3d(calc(var(--px, 0) * -10px), calc(var(--py, 0) * -10px), 0) scale(1.10);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
+}
+
+.split-left-video.video-active {
+  opacity: 1;
+  z-index: 1;
+}
+
+.split-left-video.video-dormant {
+  opacity: 0;
+  z-index: 0;
+}
+
+/* Halo Cálido Desactivado para Colores Frescos y Puros */
+.keylight-warm-halo {
+  display: none;
+}
+
+/* 1. Branding Superior */
+.keylight-brand-header {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 34px;
+}
+
+.keylight-brand-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Contenedor del Logo Real con Aura Bioluminiscente y Micro-Partículas */
+.brand-logo-container {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Aura de Resplandor Bioluminiscente Pulsante */
+.brand-logo-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 20px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.6) 0%, rgba(5, 150, 105, 0.25) 50%, transparent 75%);
+  z-index: 1;
+  filter: blur(8px);
+  animation: brandGlowBreathe 3.5s infinite ease-in-out alternate;
+  pointer-events: none;
+}
+
+@keyframes brandGlowBreathe {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.45;
+    filter: blur(6px);
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0.9;
+    filter: blur(10px);
+  }
+}
+
+/* Imagen Real favicon.svg Nítida y Limpia (Sin Sombras Oscuras de Oclusión) */
+.brand-logo-image {
+  position: relative;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  display: block;
+  filter: none;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.brand-logo-container:hover .brand-logo-image {
+  transform: scale(1.08) rotate(-1.5deg);
+}
+
+/* Micro-Partículas Bioluminiscentes Orbitales en Movimiento Constante */
+.brand-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  background: #6ee7b7;
+  box-shadow: 0 0 8px #10b981, 0 0 14px rgba(52, 211, 153, 0.9);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Partícula 1: Órbita exterior continua 360° */
+.brand-particle.p1 {
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  margin-left: -2px;
+  animation: particleOrbit1 4.5s infinite linear;
+}
+
+@keyframes particleOrbit1 {
+  0% {
+    transform: rotate(0deg) translateX(25px) rotate(0deg) scale(0.8);
+    opacity: 0.4;
+  }
+  50% {
+    transform: rotate(180deg) translateX(28px) rotate(-180deg) scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg) translateX(25px) rotate(-360deg) scale(0.8);
+    opacity: 0.4;
+  }
+}
+
+/* Partícula 2: Órbita inversa con elipse */
+.brand-particle.p2 {
+  width: 3px;
+  height: 3px;
+  margin-top: -1.5px;
+  margin-left: -1.5px;
+  background: #a7f3d0;
+  animation: particleOrbit2 6s infinite ease-in-out reverse;
+}
+
+@keyframes particleOrbit2 {
+  0% {
+    transform: rotate(135deg) translateX(23px) rotate(-135deg) scale(1.1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: rotate(315deg) translateX(27px) rotate(-315deg) scale(0.65);
+    opacity: 0.35;
+  }
+  100% {
+    transform: rotate(495deg) translateX(23px) rotate(-495deg) scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+/* Partícula 3: Flotación diagonal sobre la esquina frontal */
+.brand-particle.p3 {
+  width: 3.5px;
+  height: 3.5px;
+  margin-top: -1.75px;
+  margin-left: -1.75px;
+  animation: particleFloat3 3.6s infinite ease-in-out alternate;
+}
+
+@keyframes particleFloat3 {
+  0% {
+    transform: translate(-18px, 14px) scale(0.7);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translate(16px, -18px) scale(1.2);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(22px, 10px) scale(0.75);
+    opacity: 0.3;
+  }
+}
+
+/* Partícula 4: Micro-chispa errante */
+.brand-particle.p4 {
+  width: 2.5px;
+  height: 2.5px;
+  margin-top: -1.25px;
+  margin-left: -1.25px;
+  background: #34d399;
+  animation: particleFloat4 4.8s infinite ease-in-out alternate;
+}
+
+@keyframes particleFloat4 {
+  0% {
+    transform: translate(14px, 18px) scale(0.9);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(-16px, -12px) scale(0.5);
+    opacity: 0.25;
+  }
+  100% {
+    transform: translate(-6px, 22px) scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+/* Baliza Radar / Ping Bio-esmeralda de Base de Datos en Esquina Superior Izquierda */
+.telemetry-db-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.20);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  padding: 6px 16px;
+  color: #ffffff;
+  font-size: 0.80rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.telemetry-radar-beacon {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.radar-core-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 10px #10b981;
+  z-index: 2;
+}
+
+.radar-wave {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 1.5px solid #34d399;
+  pointer-events: none;
+  animation: radarPing 2.2s infinite cubic-bezier(0, 0.2, 0.8, 1);
+}
+
+.radar-wave.wave-2 {
+  animation-delay: 1.1s;
+}
+
+@keyframes radarPing {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(3.4);
+    opacity: 0;
+  }
+}
+
+.telemetry-db-label {
+  color: #f8fafc;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+
+.telemetry-sep {
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: bold;
+}
+
+.telemetry-time {
+  color: #ffffff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+
+.keylight-version-badge {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Gran Titular Editorial Superior con Degradado Perla-Esmeralda y Parallax */
+.keylight-hero-editorial {
+  position: relative;
+  z-index: 5;
+  margin-top: 36px;
+  max-width: 100%;
+  transform: translate3d(
+    calc(var(--px, 0) * 12px),
+    calc(var(--py, 0) * 12px),
+    0
+  );
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.keylight-editorial-title {
+  font-size: clamp(1.55rem, 2.15vw, 2.15rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  background: linear-gradient(110deg, #ffffff 11%, #34d399 28%, #10b981 50%, #059669 78%, #047857 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.55));
+  margin: 0 0 8px 0;
+}
+
+.keylight-editorial-subtitle {
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.90);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+  font-weight: 500;
+  margin: 0;
+  max-width: 540px;
+}
+
+/* 2A. Repisa Inferior Clásica Descomprimida con Respiración Vertical Holgada */
+.left-progressive-blur-shelf {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 38px 48px 26px 48px !important;
+  background: linear-gradient(
+    to top,
+    rgba(15, 23, 42, 0.32) 0%,
+    rgba(15, 23, 42, 0.12) 55%,
+    rgba(255, 255, 255, 0.04) 85%,
+    transparent 100%
+  ) !important;
+  backdrop-filter: blur(32px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(150%) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  mask-image: linear-gradient(to top, black 80%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, black 80%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  z-index: 10;
+}
+
+.shelf-metric-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shelf-metric-tag {
+  font-family: var(--font-mono);
+  font-size: 0.80rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #10b981;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 2px 8px rgba(0, 0, 0, 0.65);
+  margin-bottom: 2px;
+}
+
+.shelf-metric-headline {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+  line-height: 1.28;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+.shelf-metric-quote {
+  font-size: 0.96rem;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.52;
+  margin: 0;
+  font-style: italic;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.shelf-metric-tag {
+  font-family: var(--font-mono);
+  font-size: 0.80rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #6ee7b7;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.shelf-metric-headline {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+  line-height: 1.28;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+.shelf-metric-quote {
+  font-size: 0.96rem;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+/* Transición Suave Fade-Cross entre Métricas */
+.fade-cross {
+  animation: fadeCrossTransition 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeCrossTransition {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Línea de Progreso Milimétrica (6s de Relleno Esmeralda) */
+.shelf-progress-track {
+  width: 100%;
+  height: 2.5px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 3px 0 6px 0;
+}
+
+.shelf-progress-fill {
+  height: 100%;
+  background: #10b981;
+  border-radius: 999px;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+  animation: shelfProgressLoop 6s linear forwards;
+}
+
+@keyframes shelfProgressLoop {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+/* Sellos Farmacéuticos al Pie de la Repisa */
+.shelf-pharma-seals {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  opacity: 0.72;
+  font-size: 0.80rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.pharma-bullet {
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   🤍 3. LADO DERECHO (47%): QUIRÓFANO BLANCO PORCELANA LIMPIO & CENTRADO
+   ========================================================================== */
+.split-right-stage {
+  background-color: #ffffff !important;
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  overflow-y: auto;
+  color: #0f172a;
+  box-sizing: border-box;
+}
+
+/* Marca Corporativa Pura en el Formulario (Logo + Botica Nova a 1.6rem) */
+.surgical-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.surgical-brand-title {
+  font-size: 1.62rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.surgical-badge-pill {
+  display: inline-block;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* 4A. Animaciones de Entrada Escalonada (Stagger Entrance) */
+@keyframes formStaggerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger-1 { animation: formStaggerFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; }
+.stagger-2 { animation: formStaggerFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both; }
+.stagger-3 { animation: formStaggerFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both; }
+.stagger-4 { animation: formStaggerFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both; }
+
+/* 2A. Formulario Abierto a Gran Escala Centrado Horizontal y Verticalmente */
+.surgical-form-wrapper {
+  width: 100%;
+  max-width: 465px;
+  margin: auto auto;
+  box-sizing: border-box;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.surgical-form-header {
+  margin-bottom: 24px;
+}
+
+.surgical-form-title {
+  font-size: 2.45rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.035em;
+  margin: 0 0 10px 0;
+  line-height: 1.15;
+}
+
+.surgical-form-subtitle {
+  color: #64748b;
+  font-size: 1rem;
+  margin: 0 0 34px 0;
+  line-height: 1.5;
+}
+
+/* T1. Segmented Control Deslizante de Turnos (54px de alto) */
+.surgical-segmented-shift {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 54px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 5px;
+  box-sizing: border-box;
+  user-select: none;
+  margin-top: 2px;
+}
+
+.surgical-segmented-glider {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc(50% - 5px);
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1;
+}
+
+.surgical-segment-btn {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-family: inherit;
+  font-size: 0.81rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.surgical-segment-btn.active {
+  color: #0f172a;
+}
+
+.segment-icon-amber {
+  color: #d97706;
+  display: flex;
+  align-items: center;
+}
+
+.segment-icon-indigo {
+  color: #4338ca;
+  display: flex;
+  align-items: center;
+}
+
+.segment-hours {
+  font-size: 0.71rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.surgical-segment-btn.active .segment-hours {
+  color: #059669;
+}
+
+/* Inputs de Alta Definición con Espaciado Vertical Holgado */
+.surgical-inputs-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.surgical-field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
+}
+
+.surgical-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #1e293b;
+  margin-bottom: 10px;
+}
+
+/* Inputs con Altura 56px e Icono Reactivo */
+.surgical-input-container {
+  height: 56px;
+  border-radius: 14px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s ease;
+}
+
+.surgical-input-container:hover {
+  border-color: #cbd5e1;
+}
+
+.surgical-input-container:focus-within {
+  border-color: #10b981;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14), inset 0 1px 1px rgba(15, 23, 42, 0.02);
+}
+
+.surgical-field-icon {
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.surgical-input-container:focus-within .surgical-field-icon {
+  color: #10b981;
+  transform: scale(1.1);
+}
+
+.surgical-input-raw {
+  width: 100%;
+  flex: 1;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 0.94rem;
+  color: #0f172a;
+  font-family: inherit;
+  padding: 0;
+}
+
+.surgical-input-raw::placeholder {
+  color: #94a3b8;
+}
+
+/* Autofill Hack */
+.login-master-container input:-webkit-autofill,
+.login-master-container input:-webkit-autofill:hover,
+.login-master-container input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0f172a !important;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
+.surgical-eye-toggle {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.2s ease;
+}
+
+.surgical-eye-toggle:hover {
+  color: #0f172a;
+}
+
+/* Alertas de Estado */
+.surgical-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  padding: 9px 13px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  animation: surgicalAlertSlide 0.2s ease-out;
+}
+
+.surgical-alert.error,
+.surgical-alert.locked {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.surgical-alert.success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+}
+
+.surgical-alert-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #dc2626;
+  flex-shrink: 0;
+}
+
+@keyframes surgicalAlertSlide {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 3A. Botón Principal Estilo Cápsula Luminosa sin Oscurecimiento (3A) */
+.surgical-submit-btn {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 56px;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.4) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.38) !important;
+  color: #ffffff !important;
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 10px 25px -4px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease !important;
+  margin-top: 14px;
+  font-family: inherit;
+  outline: none !important;
+}
+
+.surgical-submit-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -80%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    105deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 75%
+  );
+  transform: rotate(25deg);
+  animation: submitBtnAutoShimmer 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes submitBtnAutoShimmer {
+  0% {
+    left: -80%;
+  }
+  20% {
+    left: 140%;
+  }
+  100% {
+    left: 140%;
+  }
+}
+
+.surgical-submit-btn:hover:not(:disabled)::after {
+  animation: submitBtnHoverShimmer 0.75s ease-in-out;
+}
+
+@keyframes submitBtnHoverShimmer {
+  0% {
+    left: -80%;
+  }
+  100% {
+    left: 140%;
+  }
+}
+
+.surgical-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #14c98e 0%, #06a874 100%) !important;
+  transform: translateY(-1.5px);
+  filter: brightness(1.04);
+  box-shadow: 0 14px 30px -4px rgba(16, 185, 129, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
+}
+
+.surgical-submit-btn:hover:not(:disabled) .surgical-btn-arrow {
+  transform: translateX(4px);
+}
+
+.surgical-btn-arrow {
+  font-size: 1.15rem;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.surgical-submit-btn:active:not(:disabled),
+.surgical-submit-btn:focus:not(:disabled),
+.surgical-submit-btn:focus-visible:not(:disabled) {
+  background: linear-gradient(180deg, #18d698 0%, #10b981 100%) !important;
+  transform: scale(0.98);
+  filter: brightness(1.08);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22), 0 8px 24px rgba(16, 185, 129, 0.55), inset 0 0 12px rgba(255, 255, 255, 0.35) !important;
+  outline: none !important;
+}
+
+.surgical-submit-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Acceso Rápido Demo Cápsula con Tecla de Hardware 3D (F9) */
+.surgical-demo-bar {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  height: 50px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  text-align: left;
+}
+
+.surgical-demo-bar:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.surgical-demo-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475569;
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.surgical-demo-bolt {
+  font-size: 0.98rem;
+}
+
+/* 3A. Tecla Física Mecánica 3D */
+.surgical-kbd-key {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-bottom: 3px solid #94a3b8;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.1s ease;
+}
+
+.surgical-demo-bar:active:not(:disabled) .surgical-kbd-key {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+
+/* Pie Quirúrgico */
+.surgical-footer-note {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 0.76rem;
+  color: #94a3b8;
+}
+
+/* Animaciones de Sacudida y Salida */
+.surgical-shake {
+  animation: surgicalShakeKeyframes 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes surgicalShakeKeyframes {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.master-dissolving {
+  animation: masterExitTransition 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes masterExitTransition {
+  0% { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(0.98); filter: blur(4px); }
+}
+
+/* ==========================================================================
+   📱 4. RESPONSIVIDAD (MENORES A 1024PX Y LAPTOPS)
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .login-master-container {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .split-left-stage {
+    min-height: 480px;
+    height: auto;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 32px 28px 160px 28px;
+  }
+
+  .keylight-heading {
+    font-size: 1.8rem;
+  }
+
+  .split-right-stage {
+    padding: 32px 28px;
+  }
+
+  .surgical-form-wrapper {
+    max-width: 100%;
+  }
+
+  .left-progressive-blur-shelf {
+    padding: 24px 28px 20px 28px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .shift-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .surgical-form-title {
+    font-size: 1.7rem;
+  }
+
+  .split-left-stage,
+  .split-right-stage {
+    padding: 24px 20px;
+  }
+
+  .left-progressive-blur-shelf {
+    padding: 20px 20px 16px 20px !important;
+  }
+}

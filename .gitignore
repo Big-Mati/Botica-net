@@ -1,11 +1,23 @@
 # ==========================================
-# Dependencias de Node.js
+# Dependencias de Node.js (Raíz y Frontend)
 # ==========================================
 node_modules/
+**/node_modules/
 package-lock.json.backup
 
 # ==========================================
-# Variables de entorno y credenciales
+# Compilación y Empaquetado (Vite / React)
+# ==========================================
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+.vite/
+**/.vite/
+*.local
+
+# ==========================================
+# Variables de Entorno y Credenciales
 # ==========================================
 .env
 .env.local
@@ -15,16 +27,18 @@ package-lock.json.backup
 *.env
 
 # ==========================================
-# Archivos de registro y logs
+# Archivos de Registro y Logs
 # ==========================================
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 lerna-debug.log*
-*.log
 
 # ==========================================
-# Archivos del sistema operativo
+# Archivos del Sistema Operativo
 # ==========================================
 .DS_Store
 .DS_Store?
@@ -36,7 +50,7 @@ Thumbs.db
 [Dd]esktop.ini
 
 # ==========================================
-# Configuraciones de editores e IDEs
+# Configuraciones de Editores e IDEs
 # ==========================================
 .vscode/*
 !.vscode/settings.json
@@ -53,9 +67,9 @@ Thumbs.db
 *.sw?
 
 # ==========================================
-# Archivos temporales o de prueba
+# Archivos Temporales y Caché
 # ==========================================
 *.tmp
 *.temp
 .cache/
-
+**/.cache/

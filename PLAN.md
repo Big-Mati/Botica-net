@@ -1,345 +1,262 @@
 # PLAN INTEGRAL DEL PROYECTO: SISTEMA DE GESTIÓN DE INVENTARIO Y VENTAS
-## Botica "Nova Salud" (FarmaPlus) — Software Web Fullstack
+## BoticaNet+ (Botica Nova) — Software Web Fullstack & Customer-Facing Display
 
 ---
 
-## 0. LISTA DE FASES Y REPARTO MODULAR DE TAREAS
+> [!IMPORTANT]
+> ### 🚀 GUÍA RÁPIDA DE INSTRUCCIÓN PARA AGENTES IA (PROMPT TRIGGER)
+> Cuando le pidas a tu compañero o a su agente de IA que trabaje en el frontend, dile exactamente:
+> **`"Colega, por favor realiza las TAREAS REACT de PLAN.md"`**
+> El agente leerá esta sección completa y ejecutará la migración y enriquecimiento del frontend en `client/`.
 
-Para facilitar la coordinación del equipo y el trabajo en paralelo entre desarrolladores y sus agentes de IA, el proyecto se divide en 5 fases estandarizadas e independientes:
+---
+
+## ⚡ TAREAS REACT: ESPECIFICACIÓN Y MIGRACIÓN AL DIRECTORIO `client/`
+
+### 🎯 1. Objetivo Principal
+Migrar, estructurar y elevar a **nivel Awwwards** todo el frontend que se concibió inicialmente en `public/index.html` y `public/estilos.css`, transformándolo en componentes modulares de **React 19 + Vite** dentro del directorio **`client/`**.
+
+El frontend debe abarcar de forma integral las **4 páginas clave** del sistema para el operador/vendedor:
+1. **🛒 Página 1: Terminal POS** (`client/src/pages/PosPage.jsx`)
+2. **⚠️ Página 2: Alertas de Stock** (`client/src/pages/AlertasPage.jsx`)
+3. **📦 Página 3: Catálogo & Almacén (Inventario)** (`client/src/pages/InventarioPage.jsx`)
+4. **🧾 Página 4: Comprobantes** (`client/src/pages/ComprobantesPage.jsx`)
+
+Todas las páginas deben incorporar diseño clínico moderno (*Obsidian Slate* + *Clinical Emerald*), micro-interacciones a 60 FPS, atajos rápidos de teclado y alta intuitividad para el vendedor.
+
+---
+
+### 🛡️ 2. Requerimientos Funcionales Específicos para `client/`
+
+#### A. 🔒 Abandono de Mostrador (Auto-Lock por Inactividad)
+- **Comportamiento:** Si el operador no registra actividad (movimiento de mouse, pulsación de teclas, toques en pantalla o scroll) durante **2 minutos (120,000 ms)**, el sistema debe bloquear automáticamente la sesión activa.
+- **Acción:** Remueve `botica_sesion_activa` de `sessionStorage` y regresa al **Cockpit Espacial 3D (`LoginHUD`)**.
+- **Atajo manual:** El operador también puede bloquear la pantalla en cualquier momento presionando **`Alt + L`** o el botón `[🔒 Bloquear (Alt+L)]`.
+
+#### B. 🛡️ Prevención de Inyección en Memoria y Fugas de Datos (Sin Autocompletado)
+- En todos los formularios de autenticación, búsqueda de medicamentos, ingreso de DNI de cliente y registro de stock:
+  - Configurar atributos estrictos: `autoComplete="off"`, `autoCorrect="off"`, `autoCapitalize="off"` y `spellCheck="false"`.
+  - Evitar que navegadores o extensiones de terceros inyecten datos cacheados en campos sensibles de cobro o credenciales.
+
+#### C. 💳 Flujo de Pago y Doble Botón de Emisión (Contingencia Zero-Fail en POS)
+En `client/src/pages/PosPage.jsx`, el proceso de cobro debe contar con **dos botones independientes** para garantizar que la venta nunca se detenga:
+1. **Botón 1: `[📱 Cobrar con Visor de Cliente]` (Flujo de Demostración y Simulación):**
+   - Al presionarlo, envía el estado hacia la Pantalla del Cliente (`modo: 'PAGO_YAPE'` o `'PAGO_TARJETA'`).
+   - El cliente en su pantalla móvil puede visualizar el QR / Radar NFC y cuenta con un botón interactivo para **"Simular Pago Realizado"**. Al pulsarlo, el visor emite la confirmación y avanza al Comprobante.
+2. **Botón 2: `[⚡ Emisión Directa de Comprobante (Bypass)]` (Contingencia de Respaldo):**
+   - Si la red falla, el celular se desconecta o no hay tiempo para la simulación, este botón **emite directamente la venta en el POS** mediante `POST /api/ventas` sin esperar confirmación del cliente ni depender de la sincronización.
+
+#### D. 🖼️ Selector de Imágenes de Productos Existentes (Cero Cargas Nuevas en Almacén)
+- Las imágenes de productos en alta resolución ya existen en el frontend en el directorio:
+  `client/public/productos/`
+  *(Archivos: `paracetamol.webp`, `amoxicilina.webp`, `ibuprofeno.webp`, `azitromicina.webp`, `omeprazol.webp`, `loratadina.webp`, `salbutamol.webp`, `alcohol.webp`, `termometro.webp`, `gasas_esteriles.webp`, `vitamina_c.webp`)*.
+- **En la página de Catálogo & Almacén (`InventarioPage.jsx`):**
+  - Al abrir el modal para agregar un nuevo medicamento, **NO se debe implementar subida de archivos multipart/form-data** para no generar almacenamiento en disco ni lógica innecesaria en el backend.
+  - En su lugar, incluir un **Selector Visual de Imágenes** tipo carrusel o cuadrícula donde el farmacéutico selecciona una de las imágenes WebP ya existentes para asignarla al producto.
+
+#### E. ⚠️ Indicador Claro y Notorio de Stock Mínimo
+- En el catálogo del POS (`PosPage.jsx`), en el inventario (`InventarioPage.jsx`) y en la página de alertas (`AlertasPage.jsx`):
+  - Cada producto debe mostrar con total claridad dos datos numéricos:
+    1. **Stock Actual:** Número de unidades disponibles en anaquel.
+    2. **Stock Mínimo:** Umbral de seguridad configurado (`Stock mín: X und.`).
+  - Cuando el stock actual sea menor o igual al stock mínimo ($stock \le stock\_minimo$):
+    - Se debe aplicar una etiqueta o badge llamativo de **`⚠️ Stock Crítico`** con borde ámbar/rojo.
+    - Mostrar la **Brecha de Reposición** (cuántas unidades faltan para alcanzar el nivel óptimo).
+
+#### F. 🌐 Despliegue en la Nube y Contingencia Local / Offline (Vercel + Render + Hotspot + PC)
+El proyecto está preparado para ejecutarse bajo 3 escenarios posibles durante la sustentación:
+1. **Escenario Nube (Vercel + Render):**
+   - Frontend en Vercel y Backend en Render comunicándose por HTTPS.
+   - *Tip:* Despertar el contenedor gratuito de Render 5 minutos antes de la exposición.
+2. **Escenario Local Wi-Fi / Hotspot (Sin Internet en el Laboratorio):**
+   - La laptop activa "Zona con cobertura inalámbrica móvil" (Hotspot de Windows).
+   - El celular del profesor se conecta al Wi-Fi de la laptop y abre la IP local generada en el QR (ej: `http://192.168.137.1:5173/?visor=cliente`).
+3. **Escenario Salva-Vidas en la Misma PC (Plan C - 100% Autónomo):**
+   - Si no hay conexión posible ni celular disponible, el sistema debe correr de forma local completa en la laptop (`node index.js` + `npm --prefix client run dev`).
+   - El botón `[📱 Visor Cliente]` en el POS permite presionar `[🖥️ Abrir Simulador Móvil en esta PC]`, abriendo una ventana flotante vertical al lado derecho sincronizada a **0 ms por `BroadcastChannel`**.
+
+---
+
+## 0. LISTA DE FASES, REPARTO MODULAR Y ESTADO ACTUAL DE AVANCE
 
 ```mermaid
 flowchart TD
-    F1["Fase 1: Base de Datos & Conexión<br><b>(database.sql & db.js)</b>"]
-    F2["Fase 2: Backend & API REST<br><b>(index.js)</b>"]
-    F3["Fase 3: Frontend & Maquetación UI<br><b>(public/index.html & public/estilos.css)</b>"]
-    F4["Fase 4: Interactividad, Efectos & Audio<br><b>(public/app.js)</b>"]
-    F5["Fase 5: Pruebas Integrales & Sustentación<br><b>(QA & Documentación)</b>"]
+    F1["Fase 1: Base de Datos Relacional<br><b>(database.sql & db.js)</b><br>🟢 100%"]
+    F2["Fase 2: Backend Express & API REST<br><b>(index.js - Transacciones FOR UPDATE)</b><br>🟢 100%"]
+    F3["Fase 3: Frontend SPA React + Vite<br><b>(client/src/pages/ - POS, Kardex, Alertas)</b><br>🟢 100%"]
+    F4["Fase 4: Cockpit Espacial LoginHUD 3D<br><b>(LoginHUD.jsx - Telemetría & Video en Bucle)</b><br>🟢 100%"]
+    F5["Fase 5: Customer-Facing Display Mobile-First<br><b>(CustomerDisplay.jsx - 1A+2A+3A+4A+5A)</b><br>🟢 100%"]
+    F6["Fase 6: Arquitectura de 3 Contingencias<br><b>(Zero-Fail Demo: Plan A, B y C Simulador)</b><br>🟢 100%"]
 
     F1 --> F2
-    F1 --> F3
-    F2 --> F4
+    F2 --> F3
     F3 --> F4
-    F4 --> F5
+    F3 --> F5
+    F5 --> F6
 ```
 
-### Matriz de Distribución de Trabajo:
-* **Fase 1 — Datos y Persistencia:** Creación del esquema relacional DDL, carga de datos iniciales (`database.sql`) y módulo de conexión con pool asíncrono (`db.js`). *(A cargo de Desarrollador A)*.
-* **Fase 2 — Servidor y Lógica de Negocio:** Construcción del servidor Express, middlewares, transacciones seguras de venta y rutas REST (`index.js`). *(A cargo de Desarrollador B)*.
-* **Fase 3 — Estructura Visual y Diseño:** Maquetación semántica del POS, tabla de inventario, panel de alertas y estilos clínicos con animaciones CSS/Hover.css (`public/index.html`, `public/estilos.css`).
-* **Fase 4 — Dinamismo, Integración y Efectos:** Consumo de la API con `fetch()`, control del carrito, animaciones con Anime.js, Spline 3D Viewer y feedback sonoro con Web Audio API (`public/app.js`).
-* **Fase 5 — Verificación y Entrega:** Pruebas de reducción atómica de stock, validación de alertas de reposición y preparación de la sustentación técnica.
+### Tabla de Estado y Cumplimiento de Fases:
+
+| Fase del Proyecto | Estado | Responsables | Resumen Técnico de lo Implementado |
+| :--- | :---: | :---: | :--- |
+| **Fase 1: Base de Datos & Conexión** (`database.sql` & `db.js`) | 🟢 **100%** | Desarrollador A | Script DDL relacional con 3 tablas (`productos`, `ventas`, `detalle_ventas`), seed de datos clínicos y pool asíncrono con `mysql2/promise`. |
+| **Fase 2: Backend & API REST** (`index.js`) | 🟢 **100%** | Desarrollador B | Servidor Express con cabeceras OWASP, transacciones atómicas con `FOR UPDATE` y endpoints en memoria RAM para sincronización móvil (`GET/POST /api/visor-estado`). |
+| **Fase 3: Frontend SPA** (`client/src/`) | 🟢 **100%** | Desarrollador B & A | Arquitectura SPA modular con **React 19 + Vite**, catálogo con fotos WebP, búsqueda instantánea, cálculo de IGV 18% y desglose de Op. Gravada. |
+| **Fase 4: Cockpit Espacial LoginHUD 3D** | 🟢 **100%** | Desarrollador A | Fondo de video cinemático (`video1.mp4` / `video2.mp4`), telemetría de BD con radar activo, auto-shimmer en botón de inicio cada 4.5s y atajo `F9`. |
+| **Fase 5: Customer-Facing Display (CFD)** | 🟢 **100%** | Desarrollador B | Pantalla de cliente *Mobile-First* con 4 estados (`IDLE`, `CARRITO`, `PAGO_YAPE`/`PAGO_TARJETA`, `COMPROBANTE` térmico con bordes dentados y QR SUNAT). |
+| **Fase 6: Arquitectura Zero-Fail Demo** | 🟢 **100%** | Equipo | Modal de doble acción en el POS con generación de QR por IP local y botón para abrir **Simulador Móvil en la Misma PC (Plan C a 0 ms)**. |
 
 ---
 
 ## 1. CONTEXTO GENERAL DEL CASO PRÁCTICO
 
-* **Organización:** Botica "Nova Salud" (referenciada como "FarmaPlus" en las preguntas guía del caso).
-* **Ubicación y Entorno:** Zona comercial de alta afluencia con incremento sostenido de clientes.
-* **Problema Principal:** Control de stock y registro de ventas manual (papel o planillas no integradas), causando desabastecimiento no previsto de medicamentos críticos, errores de inventario y largas colas (6 a 8 minutos por cliente).
-* **Solución Propuesta:** Sistema web centralizado con arquitectura desacoplada:
-  * **Backend ligero:** Node.js + Express + MySQL para transacciones atómicas seguras.
-  * **Frontend moderno:** Interfaz web intuitiva de despacho rápido (POS), actualización inmediata de existencias, módulo de alertas automáticas para reposición ($stock \le stock\_minimo$) y retroalimentación interactiva (sonidos sintetizados y animaciones).
+* **Organización:** Botica "Botica Nova" (Sistema: BoticaNet+).
+* **Problema Operativo:** Quiebres de stock no previstos por control manual y demoras de 6 a 8 minutos por paciente en caja.
+* **Solución Implementada:** 
+  1. Terminal POS de alta velocidad con cálculo de vuelto en vivo y selección de métodos de pago (`Efectivo`, `Yape / Plin`, `Tarjeta`).
+  2. Alertas automáticas de reposición para fármacos con $stock \le stock\_minimo$.
+  3. Descuento atómico de existencias en MySQL con `START TRANSACTION` y `FOR UPDATE`.
+  4. Pantalla de Cliente móvil para que el paciente o evaluador siga en vivo el despacho y el código de pago desde su smartphone.
 
 ---
 
-## 2. ARQUITECTURA TÉCNICA Y DESACOPLAMIENTO
+## 2. ARQUITECTURA TÉCNICA Y SINCRONIZACIÓN OMNI-SYNC
 
-> [!IMPORTANT]
-> **Regla de oro de la arquitectura:** El Backend y el Frontend están 100% desacoplados.
-> * El Backend solo transfiere datos en formato **JSON** puro a través de endpoints HTTP.
-> * Todos los efectos visuales (Anime.js, Hover.css, Spline Viewer) y auditivos (Web Audio API) son ejecutados de manera exclusiva por el **navegador del cliente**. El servidor no procesa audio ni renderizado.
-
-### Diagrama de Arquitectura:
 ```mermaid
 flowchart LR
-    subgraph Frontend["Frontend (Cliente - Navegador /public)"]
-        UI["Interfaz Web (HTML5 / CSS3)"]
-        HOVER["Efectos de Botones (Hover.css)"]
-        ANIME["Animaciones de Entrada (Anime.js)"]
-        SPLINE["Modelo 3D Interactivo (Spline Viewer)"]
-        AUDIO["Feedback Sonoro (Web Audio API)"]
-        APP["Controlador Cliente (app.js)"]
+    subgraph PC["💻 Terminal POS (Cajero en Laptop)"]
+        POS["PosPage.jsx<br>(Catálogo + Métodos de Pago)"]
+        MODAL["VisorModal.jsx<br>(QR IP Local + Simulador Plan C)"]
     end
 
-    subgraph Backend["Backend (Node.js + Express)"]
-        SERVER["Servidor HTTP (index.js)"]
-        ROUTES["Rutas REST (/api/...)"]
-        DBM["Pool de Conexiones (db.js)"]
+    subgraph Canales["⚡ Canales de Sincronización (Omni-Sync 5A)"]
+        BC["BroadcastChannel<br>(0 ms en misma PC / Memoria)"]
+        LS["localStorage<br>(Cross-tab sync)"]
+        RAM["RAM API Node.js<br>(GET/POST /api/visor-estado 400ms)"]
     end
 
-    subgraph Database["Base de Datos Relacional"]
-        MYSQL[("MySQL 8.x: botica_novasalud")]
+    subgraph Smartphone["📱 Smartphone del Profesor / Cliente"]
+        CFD["CustomerDisplay.jsx<br>(Mobile-First · 4 Estados)"]
     end
 
-    APP -->|fetch GET / POST (JSON)| ROUTES
-    ROUTES --> SERVER
-    SERVER --> DBM
-    DBM -->|Consultas SQL simples / Transacciones| MYSQL
-    MYSQL -->|Resultados| DBM
-    DBM --> SERVER
-    SERVER -->|Respuesta JSON { success, data }| APP
-    APP -->|Actualiza elementos| UI
-    APP -->|Dispara transiciones suaves| ANIME
-    APP -->|Emite bips, éxito o alerta| AUDIO
+    POS -->|Emitir estado| BC
+    POS -->|Emitir estado| LS
+    POS -->|Emitir estado| RAM
+
+    BC -->|0 ms| CFD
+    LS -->|Respaldo| CFD
+    RAM -->|Wi-Fi / Hotspot| CFD
 ```
 
 ---
 
-## 3. ESQUEMA SIMPLIFICADO DE LA BASE DE DATOS
+## 3. ESPECIFICACIÓN DE LA PANTALLA DE CLIENTE (COMBINACIÓN 1A + 2A + 3A + 4A + 5A)
 
-Para mantener el código simple, limpio y sin complejidades innecesarias, la base de datos se normaliza en **3 tablas maestras** (relación clásica Maestro-Detalle de ventas):
+### 🌿 Estado 1: `IDLE` (Standby & Salud · 4A)
+* Halo radial verde esmeralda superior sobre blanco porcelana.
+* Isotipo médico animado con respiración suave.
+* Baliza activa `● Caja 01 Disponible · Atención Inmediata` y reloj en tiempo real (`HH:MM AM/PM`).
+* Carrusel automático de 3 consejos farmacéuticos rotando cada 5 segundos (genéricos bioequivalentes, control FEFO/DIGEMID y boleta con DNI).
 
-```mermaid
-erDiagram
-    PRODUCTO ||--o{ DETALLE_VENTA : "es vendido en"
-    VENTA ||--|{ DETALLE_VENTA : "contiene"
+### 🛒 Estado 2: `CARRITO` (Apple Wallet / Porcelain · 1A)
+* Tarjetas de producto elevadas con animación elástica de resorte (`@keyframes cfdSpringDrop`).
+* Micro-badge `✨ Registrado en caja` en el último medicamento añadido.
+* Fotografía WebP nítida (`54x54px`), categoría terapéutica, píldora `x{cant} und.` y subtotal.
+* Banner dinámico de efectivo y vuelto cuando el cajero digita el monto: `Efectivo entregado: S/ ...` ➔ **`Su vuelto: S/ ...`**.
+* Dock inferior fijo con desenfoque de cristal (`backdrop-filter: blur(20px)`), desglose tributario y **Total a pagar** en tipografía monumental `2.15rem`.
 
-    PRODUCTO {
-        int id_producto PK "Autoincremental"
-        varchar(100) nombre "Ej: Paracetamol 500mg Tab"
-        varchar(50) categoria "Ej: Analgésicos"
-        decimal(10_2) precio "Ej: 1.50"
-        int stock "Existencias actuales"
-        int stock_minimo "Umbral para alerta (Ej: 10)"
-    }
+### 💜 Estado 3A: `PAGO_YAPE` (Inmersión Pantalla Completa · 2A)
+* Fondo púrpura/ciruela (`#742384`) y turquesa Plin (`#00d3b5`).
+* Tarjeta central blanca con **Código QR SVG grande (220x220px)**.
+* 4 esquinas de escaneo animadas con haz láser horizontal que sube y baja.
+* Comercio verificado `✓ BOTICA NOVA S.A.C.` y monto exacto `S/ {total.toFixed(2)}`.
+* Indicador inferior: `● Esperando confirmación de pago en caja...`.
 
-    VENTA {
-        int id_venta PK "Autoincremental"
-        varchar(20) numero_comprobante "Ej: B001-00001"
-        varchar(100) cliente "Nombre del cliente o Varios"
-        decimal(10_2) total "Monto total de la venta"
-        datetime fecha "Timestamp automático"
-    }
+### 💳 Estado 3B: `PAGO_TARJETA` (Terminal Contactless NFC · 2A)
+* Fondo azul noche `#0f172a`.
+* Ondas concéntricas animadas de radar NFC en esmeralda y cian.
+* Monto monumental y leyenda interactiva *"Acerque su tarjeta o teléfono al terminal"*.
 
-    DETALLE_VENTA {
-        int id_detalle PK "Autoincremental"
-        int id_venta FK "Relación con VENTA"
-        int id_producto FK "Relación con PRODUCTO"
-        int cantidad "Unidades vendidas"
-        decimal(10_2) precio_unitario "Precio al momento de venta"
-        decimal(10_2) subtotal "cantidad * precio_unitario"
-    }
+### 🧾 Estado 4: `COMPROBANTE` (Ticket Digital Térmico · 3A)
+* Vibración háptica en smartphone (`navigator.vibrate([70, 40, 100])`) al confirmarse la venta.
+* Ticket térmico blanco con **bordes dentados en zig-zag (CSS clip-path)**.
+* Serie y correlativo `B001-XXXXX`, detalle de medicamentos, base imponible e IGV 18%.
+* Código QR oficial de validación SUNAT.
+* Botones de acción: `[📥 Imprimir / Guardar PDF]` y `[💬 Compartir por WhatsApp]`.
+
+---
+
+## 4. ARQUITECTURA DE LAS 3 CONTINGENCIAS (ZERO-FAIL DEMO)
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ PLAN A (Nube / Vercel + Render):                                       │
+│ • La laptop y el celular tienen acceso a Internet.                     │
+│ • Ambos dispositivos se comunican mediante la URL pública en la nube.  │
+├────────────────────────────────────────────────────────────────────────┤
+│ PLAN B (Red Local / Hotspot de Windows - 100% Offline):                │
+│ • No hay Internet en el laboratorio.                                   │
+│ • La laptop activa "Zona con cobertura inalámbrica móvil" (Hotspot).   │
+│ • El profesor se conecta al Wi-Fi de la laptop y escanea el QR con la   │
+│   IP local detectada automáticamente (ej: http://192.168.137.1:5173).  │
+├────────────────────────────────────────────────────────────────────────┤
+│ PLAN C (Misma PC / Ventana Flotante Simulada - EL SALVA-VIDAS):        │
+│ • El profesor no saca su celular o no hay conexión posible.            │
+│ • Clic en [📱 Visor Cliente] -> [🚀 Abrir Simulador Móvil en esta PC]. │
+│ • Abre una ventana vertical limpia (420x880px) al lado derecho.        │
+│ • Sincronización a 0 ms vía BroadcastChannel sin depender de la red.   │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Reglas de Negocio en la Base de Datos:
-1. **Detección de Alertas de Reposición:** Un producto entra en alerta de bajo stock cuando:
-   $$\text{stock} \le \text{stock\_minimo}$$
-2. **Actualización Atómica de Stock:** Cada vez que se confirma una venta:
-   $$\text{stock}_{\text{nuevo}} = \text{stock}_{\text{anterior}} - \text{cantidad}$$
-3. **Consistencia Transaccional:** El registro de la venta y el descuento de inventario deben ejecutarse dentro de una transacción (`START TRANSACTION`, `COMMIT`, `ROLLBACK`) para evitar ventas con stock fantasma.
+---
+
+## 5. ESPECIFICACIÓN DE ENDPOINTS API REST (EXPRESS)
+
+| Método | Ruta | Descripción | Payload / Respuesta |
+| :---: | :--- | :--- | :--- |
+| `GET` | `/api/productos` | Catálogo ordenado alfabéticamente | `[{ id_producto, nombre, categoria, precio, stock, stock_minimo, en_alerta }]` |
+| `GET` | `/api/alertas` | Fármacos con $stock \le stock\_minimo$ | Catálogo filtrado por stock crítico |
+| `POST` | `/api/ventas` | Transacción atómica de venta | `body: { cliente, items: [{ id_producto, cantidad, precio_unitario }] }` |
+| `GET` | `/api/ventas` | Historial de últimas ventas | `[{ id_venta, numero_comprobante, cliente, total, fecha }]` |
+| `GET` | `/api/ventas/:id` | Detalle completo de una venta | `{ venta: { id_venta, numero_comprobante, total, items: [...] } }` |
+| **`GET`** | **`/api/visor-estado`** | **Estado CFD en memoria RAM** | `{ modo, items, total, subtotalNeto, igv, metodoPago, vuelto, localIp }` |
+| **`POST`** | **`/api/visor-estado`** | **Actualización CFD desde POS** | `body: { modo, items, total, ... }` ➔ `{ success: true, updatedAt }` |
 
 ---
 
-## 4. CONTRATO DE API REST PARA EL BACKEND (`index.js`)
+## 6. GUÍA DE INSTALACIÓN Y PRODUCCIÓN
 
-Este contrato define con exactitud cómo deben implementarse los endpoints para que el desarrollador del backend y del frontend trabajen en total sincronía:
+### 6.1 Instalación de Dependencias
+```bash
+# 1. Dependencias Backend
+npm install
 
-### Configuración del Servidor Express:
-* **Puerto:** `3000` (o `process.env.PORT || 3000`).
-* **Middlewares requeridos:**
-  ```javascript
-  app.use(express.json());
-  app.use(express.static('public')); // Sirve el frontend directamente
-  ```
+# 2. Dependencias Frontend React
+npm --prefix client install
+```
 
----
+### 6.2 Modo Desarrollo (2 Terminales)
+```bash
+# Terminal 1: Backend Express (puerto 3000)
+node index.js
 
-### Endpoint 1: Listar Catálogo de Productos
-* **Método:** `GET`
-* **Ruta:** `/api/productos`
-* **Consulta SQL:**
-  ```sql
-  SELECT id_producto, nombre, categoria, precio, stock, stock_minimo 
-  FROM productos 
-  ORDER BY nombre ASC;
-  ```
-* **Respuesta Exitosa (200 OK):**
-  ```json
-  [
-    {
-      "id_producto": 1,
-      "nombre": "Paracetamol 500mg",
-      "categoria": "Analgésicos",
-      "precio": 1.50,
-      "stock": 45,
-      "stock_minimo": 10
-    }
-  ]
-  ```
+# Terminal 2: Frontend Vite con soporte para red local (puerto 5173)
+npm --prefix client run dev
+```
+
+### 6.3 Modo Producción (Build)
+```bash
+# Compilar bundle estático optimizado
+npm --prefix client run build
+```
 
 ---
 
-### Endpoint 2: Listar Productos con Alerta de Reposición
-* **Método:** `GET`
-* **Ruta:** `/api/alertas`
-* **Consulta SQL:**
-  ```sql
-  SELECT id_producto, nombre, categoria, precio, stock, stock_minimo 
-  FROM productos 
-  WHERE stock <= stock_minimo 
-  ORDER BY stock ASC;
-  ```
-* **Respuesta Exitosa (200 OK):**
-  ```json
-  [
-    {
-      "id_producto": 4,
-      "nombre": "Amoxicilina 500mg",
-      "categoria": "Antibióticos",
-      "precio": 3.80,
-      "stock": 5,
-      "stock_minimo": 15
-    }
-  ]
-  ```
+## 7. CREDENCIALES Y ATAJOS DE SUSTENTACIÓN
 
----
-
-### Endpoint 3: Registrar Nuevo Medicamento
-* **Método:** `POST`
-* **Ruta:** `/api/productos`
-* **Cuerpo de Solicitud (JSON):**
-  ```json
-  {
-    "nombre": "Ibuprofeno 400mg",
-    "categoria": "Antiinflamatorios",
-    "precio": 2.00,
-    "stock": 50,
-    "stock_minimo": 12
-  }
-  ```
-* **Consulta SQL:**
-  ```sql
-  INSERT INTO productos (nombre, categoria, precio, stock, stock_minimo) 
-  VALUES (?, ?, ?, ?, ?);
-  ```
-* **Respuesta Exitosa (201 Created):**
-  ```json
-  {
-    "success": true,
-    "message": "Producto registrado correctamente",
-    "id_producto": 10
-  }
-  ```
-
----
-
-### Endpoint 4: Registrar Venta con Descuento de Stock
-* **Método:** `POST`
-* **Ruta:** `/api/ventas`
-* **Cuerpo de Solicitud (JSON):**
-  ```json
-  {
-    "cliente": "María Rodríguez",
-    "items": [
-      {
-        "id_producto": 1,
-        "cantidad": 2,
-        "precio_unitario": 1.50
-      },
-      {
-        "id_producto": 3,
-        "cantidad": 1,
-        "precio_unitario": 12.00
-      }
-    ]
-  }
-  ```
-* **Lógica en el Backend:**
-  1. Iniciar transacción: `const conn = await pool.getConnection(); await conn.beginTransaction();`
-  2. Generar número de comprobante único (ej: `B001-${Date.now().toString().slice(-5)}`).
-  3. Calcular el monto total sumando `cantidad * precio_unitario`.
-  4. Insertar en tabla `ventas`.
-  5. Por cada elemento en `items`:
-     * Verificar que haya stock suficiente (`stock >= cantidad`). Si falta stock, hacer `await conn.rollback()` y responder error 400.
-     * Insertar en `detalle_ventas`.
-     * Ejecutar `UPDATE productos SET stock = stock - ? WHERE id_producto = ?`.
-  6. Confirmar transacción: `await conn.commit();`
-  7. Liberar conexión: `conn.release();`
-* **Respuesta Exitosa (201 Created):**
-  ```json
-  {
-    "success": true,
-    "message": "Venta procesada con éxito",
-    "comprobante": "B001-98765",
-    "total": 15.00
-  }
-  ```
-
----
-
-### Endpoint 5: Historial Reciente de Ventas
-* **Método:** `GET`
-* **Ruta:** `/api/ventas`
-* **Consulta SQL:**
-  ```sql
-  SELECT id_venta, numero_comprobante, cliente, total, fecha 
-  FROM ventas 
-  ORDER BY fecha DESC 
-  LIMIT 15;
-  ```
-
----
-
-## 5. ESPECIFICACIÓN DEL FRONTEND (`public/`)
-
-### 5.1 Librerías a Incluir vía CDN (Sin instalaciones pesadas):
-1. **Anime.js:** `<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>`
-2. **Hover.css:** `<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/hover.css/2.3.1/css/hover-min.css">`
-3. **Spline Viewer:** `<script type="module" src="https://unpkg.com/@splinetool/viewer@latest/build/spline-viewer.js"></script>`
-4. **FontAwesome / Lucide Icons:** Para iconos de carrito, medicina, alertas y búsqueda.
-
-### 5.2 Secciones de la Interfaz (`index.html`):
-1. **Header / Hero Interactivo:**
-   * Título de la Botica "Nova Salud".
-   * Visor 3D con Spline o Canvas interactivo de partículas médicas.
-   * Indicador global en vivo: *Total Productos*, *Productos en Alerta*, *Total Ventas Hoy*.
-2. **Módulo de Punto de Venta (POS):**
-   * Buscador de medicamentos en tiempo real con filtro dinámico.
-   * Grilla interactiva de medicamentos con tarjeta de stock y precio.
-   * Carrito flotante lateral o inferior con resumen de compra, cálculo automático de total e input de cliente.
-   * Botón de confirmación con efectos Hover.css (`hvr-grow hvr-sweep-to-right`).
-3. **Módulo de Alertas de Reposición (Bajo Stock):**
-   * Tarjetas con borde de advertencia e insignias de alerta.
-   * Muestra la brecha de reposición (cuántas unidades faltan para el stock óptimo).
-4. **Módulo de Inventario Rápido:**
-   * Tabla con buscador para agregar nuevos medicamentos con modal emergente animado con Anime.js.
-
-### 5.3 Sistema de Sonidos UI (Web Audio API nativa en `app.js`):
-El archivo `app.js` implementará una clase o módulo `SoundEffects` que no requiere ningún archivo externo:
-* `SoundEffects.click()`: Tono corto y sutil (frecuencia 600Hz, 40ms) al interactuar.
-* `SoundEffects.success()`: Acorde armónico ascendente estilo caja registradora al confirmar venta.
-* `SoundEffects.alert()`: Tono doble de precaución (frecuencias alternas) cuando un ítem llega a stock crítico.
-
----
-
-## 6. RESPUESTAS TÉCNICAS A LAS PREGUNTAS GUÍAS DEL CURSO
-
-Estas respuestas están listas para ser presentadas en el informe final:
-
-### 1) ¿Cuáles son los principales desafíos operativos que enfrenta la botica debido a la falta de un sistema de gestión de inventarios automatizado?
-* **Desabastecimiento recurrente (quiebre de stock):** Al no contar con alertas tempranas, los productos de mayor rotación se agotan sin previo aviso.
-* **Tiempos de espera elevados:** El personal debe desplazarse repetidamente a verificar anaqueles físicos, elevando el tiempo por cliente a más de 6 minutos.
-* **Errores de registro manual:** Frecuentes discrepancias entre las existencias en físico y las anotaciones en cuadernos o planillas aisladas.
-* **Ineficiencia en la reposición:** Las compras a distribuidores se realizan a ciegas sin basarse en datos históricos de demanda.
-
-### 2) ¿Qué características específicas debe incluir el software web para atender las necesidades de control de stock y atención al cliente?
-* **Punto de Venta Rápido (POS):** Búsqueda instantánea con stock visible en tiempo real.
-* **Módulo de Alertas Automáticas:** Detección de productos donde $stock \le stock\_minimo$.
-* **Descuento Atómico de Stock:** Reducción automática e inmediata de unidades al generar una venta mediante transacciones SQL.
-* **Trazabilidad y Comprobantes:** Generación de comprobante correlativo y registro detallado por cada artículo despachado.
-
-### 3) ¿De qué manera la implementación de un software web para la gestión de inventarios puede impactar en la reducción del desabastecimiento y la mejora del servicio al cliente?
-* **Impacto en abastecimiento:** Permite transitar de una reposición reactiva a una preventiva gracias al tablero de alertas automáticas.
-* **Impacto en atención:** Reduce el tiempo promedio de atención por cliente de ~7 minutos a menos de 90 segundos, aumentando la capacidad operativa de la botica.
-
-### 4) ¿Qué beneficios adicionales, aparte del control de inventarios, podría ofrecer el software para incrementar la competitividad en su mercado?
-* **Identificación de productos estrella:** Análisis de los fármacos con mayor índice de rotación para negociar descuentos con laboratorios.
-* **Control de caja transparente:** Cierre diario de ventas exacto y contrastable con el inventario despachado.
-* **Escalabilidad del negocio:** Habilidad para incorporar múltiples terminales de atención conectados a la misma base de datos sin fricción.
-
-### 5) ¿Qué métricas se pueden utilizar para evaluar la efectividad del software en mejorar los tiempos de respuesta al cliente y reducir los errores en la gestión de inventario?
-1. **Tiempo Promedio de Atención (TPA):** Cronometraje desde que el cliente solicita el medicamento hasta la entrega del comprobante ($< 2$ min).
-2. **Exactitud del Registro de Inventario (IRA):** $\frac{\text{Conteo Físico Real}}{\text{Stock en Sistema}} \times 100\%$ ($> 98\%$).
-3. **Tasa de Quiebre de Stock (Stockout Rate):** Porcentaje de ventas perdidas por falta de existencias ($< 2\%$).
-4. **Rotación de Inventario:** Frecuencia de renovación del stock en un período dado.
+* **Credenciales de Acceso:** Usuario: `vendedor` | Contraseña: `123`.
+* **Atajo `F9`:** Auto-relleno de credenciales y login inmediato con sonido armónico.
+* **Atajo `Alt + L`:** Bloqueo de terminal POS y retorno al Cockpit 3D.
+* **Atajo `F12`:** Emisión rápida de Boleta Electrónica en caja.
+* **Botón `[📱 Visor Cliente]`:** Despliega el modal de contingencia (QR para celular y botón del simulador en PC).
+* **Parámetro URL `/?visor=cliente`:** Acceso directo e incondicional a la pantalla del cliente en smartphones.

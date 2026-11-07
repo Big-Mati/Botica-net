@@ -120,7 +120,7 @@ Para tener activa tanto la API REST con la base de datos como el frontend con so
 
 #### Terminal 1 — Servidor Backend (Node.js Express):
 ```bash
-node index.js
+npm start
 ```
 *Salida esperada:*
 ```text
@@ -130,7 +130,7 @@ node index.js
 
 #### Terminal 2 — Frontend React + Vite (Abierto a la Red Local):
 ```bash
-npm --prefix client run dev
+npm run client
 ```
 *Salida esperada:*
 ```text

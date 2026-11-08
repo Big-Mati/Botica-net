@@ -87,7 +87,7 @@ Diseñada bajo estándares de concurso (Combinación 1A + 2A + 3A + 4A + 5A) par
 El sistema cuenta con una arquitectura relacional normalizada de **7 tablas** para asegurar consistencia en ventas, control de vencimiento de medicamentos (**FEFO**), ubicación rápida en anaqueles y auditoría de Kardex en tiempo real:
 
 <p align="center">
-  <img src="public/img/db_design.jpg" alt="Diseño de la Base de Datos botica_net_db" width="100%" />
+  <img src="img/db_design.jpg" alt="Diseño de la Base de Datos botica_net_db" width="100%" />
 </p>
 
 ---
@@ -124,31 +124,33 @@ npm --prefix client install
 
 ---
 
-### Paso 4: Iniciar el Proyecto (Modo Desarrollo Completo)
+### Paso 4: Iniciar el Proyecto
 
-Para tener activa tanto la API REST con la base de datos como el frontend con soporte para red local Wi-Fi (`--host`), ejecuta en dos terminales:
+Tienes dos formas sencillas de iniciarlo:
 
-#### Terminal 1 — Servidor Backend (Node.js Express):
+#### ⚡ Opción A: Modo Automatizado (1 Solo Comando — Recomendado)
+Abre **una sola terminal** en la raíz del proyecto y ejecuta:
 ```bash
-npm start
+npm run dev
 ```
-*Salida esperada:*
-```text
-[SERVER] Sistema ERP/POS Botica Nova activo en http://localhost:3000
-[DB] Conexión verificada con MySQL (botica_net_db)
-```
+*Salida:* Gracias a `concurrently`, este comando levanta de forma simultánea el **Backend en el puerto 3000** (`[API]`) y el **Frontend en el puerto 5173** (`[VITE]`), sincronizados y con colores diferenciados. Para detener ambos servidores, presiona `Ctrl + C`.
 
-#### Terminal 2 — Frontend React + Vite (Abierto a la Red Local):
-```bash
-npm run client
-```
-*Salida esperada:*
-```text
-  VITE v8.3.5  ready in 280 ms
+---
 
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: http://192.168.1.XX:5173/
-```
+#### 🛠️ Opción B: Modo Tradicional (Dos Terminales Separadas)
+Si prefieres tener cada proceso en su propia ventana independiente:
+
+* **Terminal 1 — Servidor Backend (Node.js Express):**
+  ```bash
+  npm start
+  ```
+  *Al abrir `http://localhost:3000/` verás el **Explorador JSON de la API REST** con el estado de la BD y la lista de todos los endpoints.*
+
+* **Terminal 2 — Frontend React + Vite (Abierto a la Red Local):**
+  ```bash
+  npm run client
+  ```
+  *Al abrir `http://localhost:5173/` verás la interfaz clínica completa (Login HUD, POS, Inventario, Alertas y Kardex).*
 
 > [!TIP]
 > Al estar configurado con `--host` y el generador QR nativo (`qrLocalMatrix.js`), cualquier smartphone conectado a la misma red Wi-Fi o Hotspot de Windows puede escanear el código QR del modal **Visor Cliente** sin requerir acceso a Internet.
@@ -210,8 +212,7 @@ Botica_Net/
 ├── README.md                     # Manual integral de arquitectura, instalación y uso
 ├── PLAN.md                       # Plan maestro de fases, requerimientos y contingencias
 │
-├── public/                       # Recursos de documentación del repositorio
-│   └── img/                      # Diagramas y capturas del sistema (db_design.jpg, etc.)
+├── img/                          # Diagramas y capturas del sistema (db_design.jpg, etc.)
 │
 └── client/                       # Frontend SPA (React 19 + Vite)
     ├── package.json              # Dependencias y scripts del frontend (vite, build, lint)

@@ -28,11 +28,51 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: '50kb' }));
+app.use('/img', express.static(path.join(__dirname, 'img')));
 
-if (fs.existsSync(clientDistPath)) {
-    app.use(express.static(clientDistPath));
-}
-app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
+// =========================================================================
+// ENDPOINT PRINCIPAL: EXPLORADOR Y ESTADO DE LA API REST (GET / y GET /api)
+// Retorna un listado estructurado en JSON de rutas y métodos HTTP para pruebas rápidas
+// =========================================================================
+const apiExplorerHandler = async (req, res) => {
+    let dbStatus = 'CONECTADO';
+    try {
+        await pool.query('SELECT 1;');
+    } catch {
+        dbStatus = 'ERROR_DE_CONEXION';
+    }
+
+    return res.status(200).json({
+        sistema: 'BoticaNet+ Nova · API REST Farmacéutica',
+        version: '2.0.0',
+        estado: 'ONLINE',
+        base_de_datos: {
+            nombre: 'botica_net_db',
+            motor: 'MySQL 8+ / MariaDB',
+            estado: dbStatus
+        },
+        frontend_react: 'http://localhost:5173',
+        documentacion_endpoints: [
+            { metodo: 'POST', endpoint: '/api/login', descripcion: 'Autenticación de cajeros y turnos', payload: '{ usuario, clave }' },
+            { metodo: 'GET',  endpoint: '/api/productos', descripcion: 'Catálogo completo con lote FEFO y ubicación en anaquel' },
+            { metodo: 'GET',  endpoint: '/api/alertas', descripcion: 'Medicamentos en stock crítico (stock <= 15 und)' },
+            { metodo: 'POST', endpoint: '/api/productos', descripcion: 'Alta de nuevo medicamento + Lote + Kardex', payload: '{ nombre, categoria, precio, stock, stock_minimo, ubicacion }' },
+            { metodo: 'PUT',  endpoint: '/api/productos/:id/stock', descripcion: 'Reabastecimiento rápido de stock', payload: '{ cantidad }' },
+            { metodo: 'POST', endpoint: '/api/ventas', descripcion: 'Transacción atómica de venta (FOR UPDATE)', payload: '{ cliente, metodoPago, items: [...] }' },
+            { metodo: 'GET',  endpoint: '/api/ventas', descripcion: 'Historial de últimas ventas emitidas' },
+            { metodo: 'GET',  endpoint: '/api/ventas/:id', descripcion: 'Detalle fiscal de una venta específica' },
+            { metodo: 'GET',  endpoint: '/api/kardex', descripcion: 'Trazabilidad y auditoría de entradas y salidas de almacén' },
+            { metodo: 'GET',  endpoint: '/api/lotes', descripcion: 'Lotes con fecha de vencimiento y ubicación física en anaquel' },
+            { metodo: 'GET',  endpoint: '/api/categorias', descripcion: 'Familias farmacológicas clasificadas' },
+            { metodo: 'GET',  endpoint: '/api/visor-estado', descripcion: 'Estado en memoria RAM del Visor de Cliente CFD' },
+            { metodo: 'POST', endpoint: '/api/visor-estado', descripcion: 'Actualización en tiempo real del Visor de Cliente', payload: '{ modo, items, total, ... }' }
+        ],
+        indicacion: 'Para utilizar la interfaz gráfica interactiva (Terminal POS, Almacén, Alertas, Kardex), acceda a http://localhost:5173'
+    });
+};
+
+app.get('/', apiExplorerHandler);
+app.get('/api', apiExplorerHandler);
 
 /**
  * Normaliza un registro de la tabla productos para garantizar tipos numéricos
@@ -777,19 +817,6 @@ app.post('/api/visor-estado', (req, res) => {
         success: true,
         updatedAt: estadoVisorCliente.updatedAt
     });
-});
-
-// =========================================================================
-// FALLBACK SPA DE PRODUCCIÓN (Sirve client/dist/index.html para rutas React)
-// =========================================================================
-app.use((req, res, next) => {
-    if (req.method === 'GET' && !req.path.startsWith('/api') && !path.extname(req.path)) {
-        const distIndex = path.join(clientDistPath, 'index.html');
-        if (fs.existsSync(distIndex)) {
-            return res.sendFile(distIndex);
-        }
-    }
-    return next();
 });
 
 // =========================================================================

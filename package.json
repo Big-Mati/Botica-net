@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "client": "npm --prefix client run dev"
+    "client": "npm --prefix client run dev",
+    "dev": "concurrently -n \"API,VITE\" -c \"green,cyan\" \"npm start\" \"npm run client\""
   },
   "keywords": [],
   "author": "",
@@ -14,5 +15,8 @@
   "dependencies": {
     "express": "^5.3.0",
     "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
   }
 }

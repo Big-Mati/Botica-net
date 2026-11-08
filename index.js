@@ -28,13 +28,17 @@ function normalizarProducto(row) {
     const stockMinimo = Number(row.stock_minimo);
     return {
         id_producto: Number(row.id_producto),
+        id_categoria: row.id_categoria ? Number(row.id_categoria) : null,
         nombre: row.nombre,
-        categoria: row.categoria,
+        categoria: row.categoria || 'General',
         precio: Number(row.precio),
         stock,
         stock_minimo: stockMinimo,
         en_alerta: stock <= stockMinimo,
-        brecha_reposicion: stock <= stockMinimo ? Math.max(stockMinimo * 2 - stock, stockMinimo - stock + 5) : 0
+        brecha_reposicion: stock <= stockMinimo ? Math.max(stockMinimo * 2 - stock, stockMinimo - stock + 5) : 0,
+        ubicacion: row.ubicacion_anaquel || 'Mostrador Principal · Nivel 1',
+        lote: row.codigo_lote || 'LOT-GENERAL',
+        fecha_vencimiento: row.fecha_vencimiento ? String(row.fecha_vencimiento).slice(0, 10) : null
     };
 }
 
@@ -45,9 +49,13 @@ function normalizarProducto(row) {
 app.get('/api/productos', async (req, res) => {
     try {
         const sql = `
-            SELECT id_producto, nombre, categoria, precio, stock, stock_minimo 
-            FROM productos 
-            ORDER BY nombre ASC;
+            SELECT p.id_producto, p.id_categoria, p.nombre, c.nombre AS categoria, 
+                   p.precio, p.stock, p.stock_minimo,
+                   l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
+            FROM productos p
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            LEFT JOIN lotes l ON p.id_producto = l.id_producto
+            ORDER BY p.nombre ASC;
         `;
         const [rows] = await pool.query(sql);
         return res.status(200).json(rows.map(normalizarProducto));
@@ -67,10 +75,14 @@ app.get('/api/productos', async (req, res) => {
 app.get('/api/alertas', async (req, res) => {
     try {
         const sql = `
-            SELECT id_producto, nombre, categoria, precio, stock, stock_minimo 
-            FROM productos 
-            WHERE stock <= stock_minimo 
-            ORDER BY stock ASC;
+            SELECT p.id_producto, p.id_categoria, p.nombre, c.nombre AS categoria, 
+                   p.precio, p.stock, p.stock_minimo,
+                   l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
+            FROM productos p
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            LEFT JOIN lotes l ON p.id_producto = l.id_producto
+            WHERE p.stock <= p.stock_minimo 
+            ORDER BY p.stock ASC;
         `;
         const [rows] = await pool.query(sql);
         return res.status(200).json(rows.map(normalizarProducto));
@@ -97,6 +109,9 @@ app.post('/api/productos', async (req, res) => {
         const stockMinimo = req.body?.stock_minimo !== undefined
             ? Number.parseInt(req.body.stock_minimo, 10)
             : 10;
+        const ubicacion = typeof req.body?.ubicacion === 'string' && req.body.ubicacion.trim()
+            ? req.body.ubicacion.trim()
+            : 'Mostrador Principal · Nivel 1';
 
         if (!nombre || nombre.length > 100) {
             return res.status(400).json({
@@ -133,22 +148,55 @@ app.post('/api/productos', async (req, res) => {
             });
         }
 
+        // Resolver o registrar la categoría en la tabla categorias
+        let idCategoria = Number.parseInt(req.body?.id_categoria, 10);
+        if (!Number.isInteger(idCategoria) || idCategoria <= 0) {
+            const [catRows] = await pool.execute('SELECT id_categoria FROM categorias WHERE nombre = ?;', [categoria]);
+            if (catRows.length > 0) {
+                idCategoria = catRows[0].id_categoria;
+            } else {
+                const [catResult] = await pool.execute('INSERT INTO categorias (nombre) VALUES (?);', [categoria]);
+                idCategoria = catResult.insertId;
+            }
+        }
+
         const sql = `
-            INSERT INTO productos (nombre, categoria, precio, stock, stock_minimo) 
+            INSERT INTO productos (id_categoria, nombre, precio, stock, stock_minimo) 
             VALUES (?, ?, ?, ?, ?);
         `;
         const [result] = await pool.execute(sql, [
+            idCategoria,
             nombre,
-            categoria,
             Number(precio.toFixed(2)),
             stock,
             stockMinimo
         ]);
+        const idNuevoProducto = result.insertId;
+
+        // Registrar lote inicial con ubicación de anaquel
+        const loteCodigo = `LOT-${new Date().getFullYear()}-${idNuevoProducto.toString().padStart(3, '0')}`;
+        const fechaVenc = new Date();
+        fechaVenc.setFullYear(fechaVenc.getFullYear() + 2);
+        const fechaVencStr = fechaVenc.toISOString().slice(0, 10);
+
+        await pool.execute(
+            'INSERT INTO lotes (id_producto, codigo_lote, fecha_vencimiento, stock_lote, ubicacion_anaquel) VALUES (?, ?, ?, ?, ?);',
+            [idNuevoProducto, loteCodigo, fechaVencStr, stock, ubicacion]
+        );
+
+        // Registrar movimiento inicial en Kardex si tiene stock
+        if (stock > 0) {
+            await pool.execute(
+                `INSERT INTO movimientos_kardex (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_posterior, motivo_referencia)
+                 VALUES (?, 'ENTRADA_INICIAL', ?, 0, ?, 'Alta inicial de inventario');`,
+                [idNuevoProducto, stock, stock]
+            );
+        }
 
         return res.status(201).json({
             success: true,
-            message: 'Producto registrado correctamente',
-            id_producto: result.insertId
+            message: 'Producto registrado correctamente con ubicación de anaquel y lote inicial.',
+            id_producto: idNuevoProducto
         });
     } catch (error) {
         console.error('[POST /api/productos] Error:', error.message);
@@ -179,23 +227,50 @@ app.put('/api/productos/:id/stock', async (req, res) => {
             });
         }
 
-        const [result] = await pool.execute(
-            'UPDATE productos SET stock = stock + ? WHERE id_producto = ?;',
-            [cantidadIngreso, idProducto]
+        const [stockPrevRows] = await pool.execute(
+            'SELECT stock FROM productos WHERE id_producto = ?;',
+            [idProducto]
         );
 
-        if (result.affectedRows === 0) {
+        if (stockPrevRows.length === 0) {
             return res.status(404).json({ success: false, message: 'Medicamento no encontrado.' });
         }
 
+        const stockAnterior = Number(stockPrevRows[0].stock);
+        const stockPosterior = stockAnterior + cantidadIngreso;
+
+        await pool.execute(
+            'UPDATE productos SET stock = ? WHERE id_producto = ?;',
+            [stockPosterior, idProducto]
+        );
+
+        // Actualizar stock de lote
+        await pool.execute(
+            'UPDATE lotes SET stock_lote = stock_lote + ? WHERE id_producto = ? LIMIT 1;',
+            [cantidadIngreso, idProducto]
+        );
+
+        // Registrar en Kardex
+        await pool.execute(
+            `INSERT INTO movimientos_kardex (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_posterior, motivo_referencia)
+             VALUES (?, 'ENTRADA_COMPRA', ?, ?, ?, 'Reabastecimiento de almacén');`,
+            [idProducto, cantidadIngreso, stockAnterior, stockPosterior]
+        );
+
         const [rows] = await pool.execute(
-            'SELECT id_producto, nombre, categoria, precio, stock, stock_minimo FROM productos WHERE id_producto = ?;',
+            `SELECT p.id_producto, p.id_categoria, p.nombre, c.nombre AS categoria, 
+                    p.precio, p.stock, p.stock_minimo,
+                    l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
+             FROM productos p
+             LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+             LEFT JOIN lotes l ON p.id_producto = l.id_producto
+             WHERE p.id_producto = ?;`,
             [idProducto]
         );
 
         return res.status(200).json({
             success: true,
-            message: `Se ingresaron +${cantidadIngreso} unidades al almacén.`,
+            message: `Se ingresaron +${cantidadIngreso} unidades al almacén y se actualizó el Kardex.`,
             producto: normalizarProducto(rows[0])
         });
     } catch (error) {
@@ -287,18 +362,23 @@ app.post('/api/ventas', async (req, res) => {
                 nombre: producto.nombre,
                 cantidad: cantidadSolicitada,
                 precio_unitario: precioUnitario,
-                subtotal
+                subtotal,
+                stock_anterior: stockActual,
+                stock_posterior: stockActual - cantidadSolicitada
             });
         }
 
-        // 4. Insertar cabecera en tabla ventas
+        // 4. Insertar cabecera en tabla ventas con id_vendedor y metodo_pago
+        const metodoPago = typeof req.body?.metodoPago === 'string' ? req.body.metodoPago.slice(0, 30) : 'Efectivo';
+        const idVendedor = Number.isInteger(Number(req.body?.id_vendedor)) ? Number(req.body.id_vendedor) : 1;
+
         const [ventaResult] = await conn.execute(
-            'INSERT INTO ventas (numero_comprobante, cliente, total) VALUES (?, ?, ?);',
-            [numeroComprobante, cliente, montoTotal]
+            'INSERT INTO ventas (id_vendedor, numero_comprobante, cliente, metodo_pago, total) VALUES (?, ?, ?, ?, ?);',
+            [idVendedor, numeroComprobante, cliente, metodoPago, montoTotal]
         );
         const idVenta = ventaResult.insertId;
 
-        // 5. Insertar en detalle_ventas y descontar stock atómicamente
+        // 5. Insertar en detalle_ventas, descontar stock atómicamente y registrar en Kardex
         for (const item of detallesParaInsertar) {
             await conn.execute(
                 `INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario, subtotal) 
@@ -310,6 +390,18 @@ app.post('/api/ventas', async (req, res) => {
                 'UPDATE productos SET stock = stock - ? WHERE id_producto = ?;',
                 [item.cantidad, item.id_producto]
             );
+
+            await conn.execute(
+                'UPDATE lotes SET stock_lote = GREATEST(0, stock_lote - ?) WHERE id_producto = ? LIMIT 1;',
+                [item.cantidad, item.id_producto]
+            );
+
+            // Registro automático en Kardex (Trazabilidad y Auditoría)
+            await conn.execute(
+                `INSERT INTO movimientos_kardex (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_posterior, motivo_referencia)
+                 VALUES (?, 'SALIDA_VENTA', ?, ?, ?, ?);`,
+                [item.id_producto, item.cantidad, item.stock_anterior, item.stock_posterior, `Venta Boleta ${numeroComprobante}`]
+            );
         }
 
         // 6. Confirmar transacción
@@ -317,10 +409,11 @@ app.post('/api/ventas', async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            message: 'Venta procesada con éxito',
+            message: 'Venta procesada con éxito y registrada en Kardex',
             id_venta: idVenta,
             comprobante: numeroComprobante,
             cliente,
+            metodo_pago: metodoPago,
             total: montoTotal,
             items: detallesParaInsertar
         });
@@ -356,12 +449,15 @@ app.get('/api/ventas', async (req, res) => {
                 v.id_venta,
                 v.numero_comprobante,
                 v.cliente,
+                v.metodo_pago,
                 v.total,
                 v.fecha,
+                ven.nombre AS vendedor,
                 COALESCE(SUM(dv.cantidad), 0) AS total_unidades
             FROM ventas v
             LEFT JOIN detalle_ventas dv ON v.id_venta = dv.id_venta
-            GROUP BY v.id_venta, v.numero_comprobante, v.cliente, v.total, v.fecha
+            LEFT JOIN vendedores ven ON v.id_vendedor = ven.id_vendedor
+            GROUP BY v.id_venta, v.numero_comprobante, v.cliente, v.metodo_pago, v.total, v.fecha, ven.nombre
             ORDER BY v.fecha DESC 
             LIMIT 15;
         `;
@@ -370,8 +466,10 @@ app.get('/api/ventas', async (req, res) => {
             id_venta: Number(r.id_venta),
             numero_comprobante: r.numero_comprobante,
             cliente: r.cliente,
+            metodo_pago: r.metodo_pago,
             total: Number(r.total),
             fecha: r.fecha,
+            vendedor: r.vendedor || 'Carlos Mendoza',
             total_unidades: Number(r.total_unidades)
         }));
         return res.status(200).json(ventas);
@@ -395,7 +493,10 @@ app.get('/api/ventas/:id', async (req, res) => {
         }
 
         const [ventaRows] = await pool.execute(
-            'SELECT id_venta, numero_comprobante, cliente, total, fecha FROM ventas WHERE id_venta = ?;',
+            `SELECT v.id_venta, v.numero_comprobante, v.cliente, v.metodo_pago, v.total, v.fecha, ven.nombre AS vendedor
+             FROM ventas v
+             LEFT JOIN vendedores ven ON v.id_vendedor = ven.id_vendedor
+             WHERE v.id_venta = ?;`,
             [idVenta]
         );
 
@@ -404,9 +505,10 @@ app.get('/api/ventas/:id', async (req, res) => {
         }
 
         const [detalleRows] = await pool.execute(
-            `SELECT dv.id_detalle, dv.id_producto, p.nombre, p.categoria, dv.cantidad, dv.precio_unitario, dv.subtotal
+            `SELECT dv.id_detalle, dv.id_producto, p.nombre, c.nombre AS categoria, dv.cantidad, dv.precio_unitario, dv.subtotal
              FROM detalle_ventas dv
              INNER JOIN productos p ON dv.id_producto = p.id_producto
+             LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
              WHERE dv.id_venta = ?;`,
             [idVenta]
         );
@@ -417,12 +519,14 @@ app.get('/api/ventas/:id', async (req, res) => {
                 id_venta: Number(ventaRows[0].id_venta),
                 numero_comprobante: ventaRows[0].numero_comprobante,
                 cliente: ventaRows[0].cliente,
+                metodo_pago: ventaRows[0].metodo_pago || 'Efectivo',
+                vendedor: ventaRows[0].vendedor || 'Carlos Mendoza',
                 total: Number(ventaRows[0].total),
                 fecha: ventaRows[0].fecha,
                 items: detalleRows.map((d) => ({
                     id_producto: Number(d.id_producto),
                     nombre: d.nombre,
-                    categoria: d.categoria,
+                    categoria: d.categoria || 'General',
                     cantidad: Number(d.cantidad),
                     precio_unitario: Number(d.precio_unitario),
                     subtotal: Number(d.subtotal)
@@ -435,6 +539,63 @@ app.get('/api/ventas/:id', async (req, res) => {
             success: false,
             message: 'Error al obtener el detalle del comprobante.'
         });
+    }
+});
+
+// =========================================================================
+// ENDPOINT 6: Listar Categorías Farmacológicas (GET /api/categorias)
+// =========================================================================
+app.get('/api/categorias', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT id_categoria, nombre, descripcion FROM categorias ORDER BY nombre ASC;');
+        return res.status(200).json(rows);
+    } catch (error) {
+        console.error('[GET /api/categorias] Error:', error.message);
+        return res.status(500).json({ success: false, message: 'Error al consultar categorías.' });
+    }
+});
+
+// =========================================================================
+// ENDPOINT 7: Trazabilidad y Auditoría de Inventario (GET /api/kardex)
+// =========================================================================
+app.get('/api/kardex', async (req, res) => {
+    try {
+        const sql = `
+            SELECT m.id_movimiento, m.id_producto, p.nombre AS producto, c.nombre AS categoria,
+                   m.tipo_movimiento, m.cantidad, m.stock_anterior, m.stock_posterior,
+                   m.motivo_referencia, m.fecha
+            FROM movimientos_kardex m
+            INNER JOIN productos p ON m.id_producto = p.id_producto
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            ORDER BY m.fecha DESC
+            LIMIT 50;
+        `;
+        const [rows] = await pool.query(sql);
+        return res.status(200).json(rows);
+    } catch (error) {
+        console.error('[GET /api/kardex] Error:', error.message);
+        return res.status(500).json({ success: false, message: 'Error al consultar movimientos de Kardex.' });
+    }
+});
+
+// =========================================================================
+// ENDPOINT 8: Lotes y Ubicaciones en Anaqueles (GET /api/lotes)
+// =========================================================================
+app.get('/api/lotes', async (req, res) => {
+    try {
+        const sql = `
+            SELECT l.id_lote, l.id_producto, p.nombre AS producto, c.nombre AS categoria,
+                   l.codigo_lote, l.fecha_vencimiento, l.stock_lote, l.ubicacion_anaquel
+            FROM lotes l
+            INNER JOIN productos p ON l.id_producto = p.id_producto
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            ORDER BY l.fecha_vencimiento ASC;
+        `;
+        const [rows] = await pool.query(sql);
+        return res.status(200).json(rows);
+    } catch (error) {
+        console.error('[GET /api/lotes] Error:', error.message);
+        return res.status(500).json({ success: false, message: 'Error al consultar lotes de inventario.' });
     }
 });
 

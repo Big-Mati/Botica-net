@@ -16,11 +16,12 @@
 ### 🎯 1. Objetivo Principal
 Migrar, estructurar y elevar a **nivel Awwwards** todo el frontend que se concibió inicialmente en `public/index.html` y `public/estilos.css`, transformándolo en componentes modulares de **React 19 + Vite** dentro del directorio **`client/`**.
 
-El frontend debe abarcar de forma integral las **4 páginas clave** del sistema para el operador/vendedor:
+El frontend debe abarcar de forma integral las **páginas y módulos clave** del sistema para el operador/vendedor:
 1. **🛒 Página 1: Terminal POS** (`client/src/pages/PosPage.jsx`)
 2. **⚠️ Página 2: Alertas de Stock** (`client/src/pages/AlertasPage.jsx`)
 3. **📦 Página 3: Catálogo & Almacén (Inventario)** (`client/src/pages/InventarioPage.jsx`)
 4. **🧾 Página 4: Comprobantes** (`client/src/pages/ComprobantesPage.jsx`)
+5. **📊 Módulo 5: Kardex de Movimientos (Entradas y Salidas)** (`client/src/pages/KardexPage.jsx` o pestaña activa en Almacén)
 
 Todas las páginas deben incorporar diseño clínico moderno (*Obsidian Slate* + *Clinical Emerald*), micro-interacciones a 60 FPS, atajos rápidos de teclado y alta intuitividad para el vendedor.
 
@@ -75,6 +76,17 @@ El proyecto está preparado para ejecutarse bajo 3 escenarios posibles durante l
    - Si no hay conexión posible ni celular disponible, el sistema debe correr de forma local completa en la laptop (`node index.js` + `npm --prefix client run dev`).
    - El botón `[📱 Visor Cliente]` en el POS permite presionar `[🖥️ Abrir Simulador Móvil en esta PC]`, abriendo una ventana flotante vertical al lado derecho sincronizada a **0 ms por `BroadcastChannel`**.
 
+#### G. 📊 Módulo de Kardex: Trazabilidad de Entradas y Salidas en Tiempo Real
+- **Objetivo:** Visualizar y auditar en la interfaz web todos los movimientos del inventario consumiendo el endpoint existente `GET /api/kardex`.
+- **Requerimientos Visuales y Funcionales:**
+  - **Tabla de Entradas y Salidas con Badges de Color:**
+    - 🟢 `ENTRADA_COMPRA` / `ENTRADA_INICIAL`: Badge verde esmeralda con indicador `+X und.` (ingreso de mercadería al almacén).
+    - 🔴 `SALIDA_VENTA`: Badge rojo o coral con indicador `-X und.` (salida automática generada al cobrar en el POS).
+    - 🟡 `AJUSTE_MERMA`: Badge ámbar (bajas por deterioro o vencimiento de lote).
+  - **Auditoría Matemática Precisa:** Mostrar en columnas contiguas: **Stock Anterior**, **Cantidad del Movimiento** y **Stock Posterior** para certificar que el stock del producto coincide exactamente con la suma y resta de sus movimientos.
+  - **Motivo o Documento de Referencia:** Mostrar el número de comprobante de la venta (ej. *"Venta según Comprobante BOL-000101"*) o la referencia de la compra.
+  - **Filtros de Trazabilidad:** Barra de búsqueda por nombre de medicamento y botones de filtro rápido (*Todos*, *Solo Entradas*, *Solo Salidas por Venta*).
+
 ---
 
 ## 0. LISTA DE FASES, REPARTO MODULAR Y ESTADO ACTUAL DE AVANCE
@@ -99,7 +111,7 @@ flowchart TD
 
 | Fase del Proyecto | Estado | Responsables | Resumen Técnico de lo Implementado |
 | :--- | :---: | :---: | :--- |
-| **Fase 1: Base de Datos & Conexión** (`database.sql` & `db.js`) | 🟢 **100%** | Desarrollador A | Script DDL relacional con 3 tablas (`productos`, `ventas`, `detalle_ventas`), seed de datos clínicos y pool asíncrono con `mysql2/promise`. |
+| **Fase 1: Base de Datos & Conexión** (`database.sql` & `db.js`) | 🟢 **100%** | Desarrollador A | Script DDL relacional con 7 tablas normalizadas (`categorias`, `vendedores`, `productos`, `lotes`, `ventas`, `detalle_ventas`, `movimientos_kardex`), seed de datos clínicos y pool asíncrono con `mysql2/promise`. |
 | **Fase 2: Backend & API REST** (`index.js`) | 🟢 **100%** | Desarrollador B | Servidor Express con cabeceras OWASP, transacciones atómicas con `FOR UPDATE` y endpoints en memoria RAM para sincronización móvil (`GET/POST /api/visor-estado`). |
 | **Fase 3: Frontend SPA** (`client/src/`) | 🟢 **100%** | Desarrollador B & A | Arquitectura SPA modular con **React 19 + Vite**, catálogo con fotos WebP, búsqueda instantánea, cálculo de IGV 18% y desglose de Op. Gravada. |
 | **Fase 4: Cockpit Espacial LoginHUD 3D** | 🟢 **100%** | Desarrollador A | Fondo de video cinemático (`video1.mp4` / `video2.mp4`), telemetría de BD con radar activo, auto-shimmer en botón de inicio cada 4.5s y atajo `F9`. |

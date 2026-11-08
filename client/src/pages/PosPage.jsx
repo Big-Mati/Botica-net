@@ -310,9 +310,18 @@ export default function PosPage() {
                     <div style={{ fontSize: '17px', fontWeight: 'bold', color: '#10b981', margin: '4px 0' }}>
                       S/ {Number(prod.precio).toFixed(2)}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                      Stock: <strong style={{ color: prod.en_alerta ? '#f59e0b' : '#f8fafc' }}>{prod.stock} und.</strong>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8' }}>
+                      <span>Stock: <strong style={{ color: prod.en_alerta ? '#f59e0b' : '#f8fafc' }}>{prod.stock} und.</strong></span>
+                      <span style={{ color: '#64748b' }}>Mín: {prod.stock_minimo} und.</span>
                     </div>
+                    {prod.ubicacion && (
+                      <div style={{ fontSize: '10.5px', color: '#38bdf8', marginTop: '5px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>📍</span>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={prod.ubicacion}>
+                          {prod.ubicacion}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <button

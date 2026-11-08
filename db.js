@@ -5,7 +5,7 @@ const pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: 'root', // En XAMPP por defecto es vacío (''); cambiar si tu MySQL tiene contraseña
-    database: 'botica_db',
+    database: 'botica_net_db',
     port: 3306,
     waitForConnections: true,
     connectionLimit: 10,
@@ -21,7 +21,7 @@ const pool = mysql.createPool({
 async function testConnection() {
     try {
         const connection = await pool.getConnection();
-        console.log('✅ Conexion exitosa a la base de datos MySQL (botica_db)');
+        console.log('✅ Conexion exitosa a la base de datos MySQL (botica_net_db)');
         connection.release();
     } catch (error) {
         console.error('❌ Error al conectar con la base de datos MySQL:');

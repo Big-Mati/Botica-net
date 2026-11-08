@@ -125,7 +125,7 @@ npm start
 *Salida esperada:*
 ```text
 🚀 Servidor ERP/POS Botica "Nova Salud" activo en http://localhost:3000
-✅ Conexion exitosa a la base de datos MySQL (botica_db)
+✅ Conexion exitosa a la base de datos MySQL (botica_net_db)
 ```
 
 #### Terminal 2 — Frontend React + Vite (Abierto a la Red Local):

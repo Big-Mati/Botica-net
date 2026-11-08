@@ -82,6 +82,16 @@ Diseñada bajo estándares de concurso (Combinación 1A + 2A + 3A + 4A + 5A) par
 
 ---
 
+## 🗄️ Modelo y Diseño de la Base de Datos (`botica_net_db`)
+
+El sistema cuenta con una arquitectura relacional normalizada de **7 tablas** para asegurar consistencia en ventas, control de vencimiento de medicamentos (**FEFO**), ubicación rápida en anaqueles y auditoría de Kardex en tiempo real:
+
+<p align="center">
+  <img src="public/img/db_design.jpg" alt="Diseño de la Base de Datos botica_net_db" width="100%" />
+</p>
+
+---
+
 ## 🚀 Guía de Instalación y Puesta en Marcha
 
 ### Paso 1: Requisitos Previos
@@ -193,6 +203,9 @@ Botica_Net/
 ├── package.json                  # Dependencias del servidor backend
 ├── README.md                     # Este manual integral de arquitectura y uso
 ├── PLAN.md                       # Plan maestro de requerimientos y módulos
+│
+├── public/                       # Recursos estáticos y capturas
+│   └── img/                      # Diagramas y capturas del sistema (db_design.jpg, etc.)
 │
 └── client/                       # Frontend SPA (React 19 + Vite)
     ├── package.json              # Dependencias y scripts del frontend (vite --host)

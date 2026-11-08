@@ -124,33 +124,60 @@ npm --prefix client install
 
 ---
 
-### Paso 4: Iniciar el Proyecto
+### Paso 4: Iniciar el Proyecto (Backend y Frontend en Puertos Separados)
 
-Tienes dos formas sencillas de iniciarlo:
+El sistema opera bajo una arquitectura desacoplada con dos puertos especializados:
 
-#### ⚡ Opción A: Modo Automatizado (1 Solo Comando — Recomendado)
-Abre **una sola terminal** en la raíz del proyecto y ejecuta:
+| Servicio | Puerto Local | ¿Qué se muestra exactamente en el navegador? |
+| :--- | :---: | :--- |
+| **Backend (Node.js + Express)** | `http://localhost:3000/` | **Explorador JSON de la API REST:** Muestra el estado en vivo del servidor, la confirmación de conexión a MySQL (`botica_net_db`) y el catálogo interactivo de los 13 endpoints documentados con sus métodos HTTP (`GET`, `POST`, `PUT`) y payloads para pruebas rápidas de backend. |
+| **Frontend (React 19 + Vite)** | `http://localhost:5173/` | **Aplicación Clínica Completa (SPA):** Interfaz gráfica de usuario que incluye el Cockpit 3D de Login (`LoginHUD`), Terminal POS de ventas, Catálogo con fotos WebP, Alertas de stock crítico con semáforo, Comprobantes fiscales y la página de **Kardex** con trazabilidad matemática. Además cuenta con soporte de red local (`--host`) para abrirse en celulares. |
+
+---
+
+#### ⚡ Opción A: Modo Automatizado (1 Solo Comando — Altamente Recomendado)
+
+Para mayor comodidad durante el desarrollo o la sustentación, no necesitas abrir múltiples terminales. Abre **una sola ventana de terminal** en la raíz del proyecto y ejecuta:
+
 ```bash
 npm run dev
 ```
-*Salida:* Gracias a `concurrently`, este comando levanta de forma simultánea el **Backend en el puerto 3000** (`[API]`) y el **Frontend en el puerto 5173** (`[VITE]`), sincronizados y con colores diferenciados. Para detener ambos servidores, presiona `Ctrl + C`.
+
+* **¿Cómo funciona internamente?:** Utiliza `concurrently` para lanzar en paralelo el backend y el frontend.
+* **Salida en consola:** Verás los logs de ambos servicios en la misma pantalla con prefijos de colores diferenciados:
+  - `[API]` (en verde): Muestra el arranque del servidor Node.js y la conexión con MySQL en el puerto `3000`.
+  - `[VITE]` (en cian): Muestra el servidor de desarrollo de React en el puerto `5173` y la IP local para smartphones.
+* **Detención rápida:** Al presionar `Ctrl + C`, ambos servidores se apagan de forma limpia y simultánea.
 
 ---
 
 #### 🛠️ Opción B: Modo Tradicional (Dos Terminales Separadas)
-Si prefieres tener cada proceso en su propia ventana independiente:
 
-* **Terminal 1 — Servidor Backend (Node.js Express):**
-  ```bash
-  npm start
-  ```
-  *Al abrir `http://localhost:3000/` verás el **Explorador JSON de la API REST** con el estado de la BD y la lista de todos los endpoints.*
+Si prefieres monitorear o depurar cada proceso en su propia consola independiente, puedes iniciarlos por separado:
 
-* **Terminal 2 — Frontend React + Vite (Abierto a la Red Local):**
-  ```bash
-  npm run client
-  ```
-  *Al abrir `http://localhost:5173/` verás la interfaz clínica completa (Login HUD, POS, Inventario, Alertas y Kardex).*
+1. **Terminal 1 — Servidor Backend (API REST en Puerto 3000):**
+   ```bash
+   npm start
+   ```
+   *Salida esperada:*
+   ```text
+   [SERVER] Sistema ERP/POS Botica Nova activo en http://localhost:3000
+   [DB] Conexión verificada con MySQL (botica_net_db)
+   ```
+   *Al ingresar a `http://localhost:3000/` en tu navegador podrás visualizar el JSON de estado y rutas del backend.*
+
+2. **Terminal 2 — Servidor Frontend (React + Vite en Puerto 5173):**
+   ```bash
+   npm run client
+   ```
+   *Salida esperada:*
+   ```text
+     VITE v8.3.5  ready in 280 ms
+
+     ➜  Local:   http://localhost:5173/
+     ➜  Network: http://192.168.1.XX:5173/
+   ```
+   *Al ingresar a `http://localhost:5173/` accederás a la interfaz gráfica completa del sistema.*
 
 > [!TIP]
 > Al estar configurado con `--host` y el generador QR nativo (`qrLocalMatrix.js`), cualquier smartphone conectado a la misma red Wi-Fi o Hotspot de Windows puede escanear el código QR del modal **Visor Cliente** sin requerir acceso a Internet.

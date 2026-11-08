@@ -1,10 +1,8 @@
 /* ==========================================================================
    FUSIÓN MAESTRA: "Keylight + Gridwork Co" (Refinamiento 1A + 2A + 3A + 4A)
-   Columna Izquierda (50%): Atmósfera Cinemática "Keylight & Botanical Apothecary"
-   Columna Derecha (50%): Quirófano Blanco Porcelana & Usabilidad Táctil "Gridwork Co"
+   Columna Izquierda (53%): Atmósfera Cinemática "Keylight & Botanical Apothecary"
+   Columna Derecha (47%): Quirófano Blanco Porcelana & Usabilidad Táctil "Gridwork Co"
    ========================================================================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
 
 :root {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -27,7 +25,7 @@
 }
 
 /* ==========================================================================
-   🏛️ 1. ARQUITECTURA GENERAL (PROPORCIÓN ASIMÉTRICA 53% / 47%)
+   1. ARQUITECTURA GENERAL (PROPORCIÓN ASIMÉTRICA 53% / 47%)
    ========================================================================== */
 .login-master-container {
   position: fixed;
@@ -45,7 +43,7 @@
 }
 
 /* ==========================================================================
-   🌿 2. LADO IZQUIERDO (53%): ESCAPARATE NATURAL GRIDWORK CO
+   2. LADO IZQUIERDO (53%): ESCAPARATE NATURAL GRIDWORK CO
    ========================================================================== */
 .split-left-stage {
   position: relative;
@@ -55,8 +53,8 @@
   box-shadow: none;
   background-color: #08090b;
   background-image: 
-    linear-gradient(135deg, rgba(8, 10, 14, 0.96) 0%, rgba(12, 14, 18, 0.92) 100%),
-    url('https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1200&q=80');
+    radial-gradient(circle at 25% 20%, rgba(16, 185, 129, 0.16) 0%, transparent 55%),
+    linear-gradient(135deg, #06090e 0%, #0b111a 100%);
   background-size: cover;
   background-position: center;
   padding: 36px 48px;
@@ -392,6 +390,7 @@
   letter-spacing: -0.025em;
   white-space: nowrap;
   background: linear-gradient(110deg, #ffffff 11%, #34d399 28%, #10b981 50%, #059669 78%, #047857 100%);
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 2px 14px rgba(0, 0, 0, 0.55));
@@ -437,34 +436,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.shelf-metric-tag {
-  font-family: var(--font-mono);
-  font-size: 0.80rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #10b981;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 2px 8px rgba(0, 0, 0, 0.65);
-  margin-bottom: 2px;
-}
-
-.shelf-metric-headline {
-  font-size: 1.55rem;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.025em;
-  line-height: 1.28;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
-}
-
-.shelf-metric-quote {
-  font-size: 0.96rem;
-  color: rgba(255, 255, 255, 0.92);
-  line-height: 1.52;
-  margin: 0;
-  font-style: italic;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
 .shelf-metric-tag {
@@ -553,7 +524,7 @@
 }
 
 /* ==========================================================================
-   🤍 3. LADO DERECHO (47%): QUIRÓFANO BLANCO PORCELANA LIMPIO & CENTRADO
+   3. LADO DERECHO (47%): QUIRÓFANO BLANCO PORCELANA LIMPIO & CENTRADO
    ========================================================================== */
 .split-right-stage {
   background-color: #ffffff !important;
@@ -1046,7 +1017,7 @@
 }
 
 /* ==========================================================================
-   📱 4. RESPONSIVIDAD (MENORES A 1024PX Y LAPTOPS)
+   4. RESPONSIVIDAD (MENORES A 1024PX Y LAPTOPS)
    ========================================================================== */
 @media (max-width: 1024px) {
   .login-master-container {

@@ -1,19 +1,24 @@
 const mysql = require('mysql2/promise');
 
-// pool para conexiones
-const pool = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: 'root', // En XAMPP por defecto es vacío (''); cambiar si tu MySQL tiene contraseña
-    database: 'botica_net_db',
-    port: 3306,
+// Pool asíncrono compatible con XAMPP local (por defecto) y despliegue en la nube (Render / Railway / TiDB)
+const poolConfig = {
+    host: process.env.DB_HOST || '127.0.0.1',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '',
+    database: process.env.DB_NAME || 'botica_net_db',
+    port: Number(process.env.DB_PORT) || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
     charset: 'utf8mb4',
-    // Permite múltiples sentencias en una sola llamada si fuera necesario
     multipleStatements: false
-});
+};
+
+if (process.env.DB_SSL === 'true') {
+    poolConfig.ssl = { rejectUnauthorized: false };
+}
+
+const pool = mysql.createPool(poolConfig);
 
 /**
  * Funcion opcional para probar la conexión al iniciar el servidor
@@ -21,11 +26,10 @@ const pool = mysql.createPool({
 async function testConnection() {
     try {
         const connection = await pool.getConnection();
-        console.log('✅ Conexion exitosa a la base de datos MySQL (botica_net_db)');
+        console.log('[DB] Conexión verificada con MySQL (botica_net_db)');
         connection.release();
     } catch (error) {
-        console.error('❌ Error al conectar con la base de datos MySQL:');
-        console.error('Detalle:', error.message);
+        console.error('[DB] Error al conectar con MySQL:', error.message);
     }
 }
 

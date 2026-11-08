@@ -1,5 +1,5 @@
 /* ==========================================================================
-   📱 CUSTOMER DISPLAY (CFD) - MOBILE FIRST DESIGN (AWWWARDS EDITION)
+   CUSTOMER DISPLAY (CFD) - MOBILE FIRST DESIGN
    Combinación 1A + 2A + 3A + 4A + 5A
    ========================================================================== */
 
@@ -37,7 +37,7 @@
 }
 
 /* ==========================================================================
-   🌿 ESTADO 1: IDLE - BIENVENIDA Y SALUD (4A)
+   ESTADO 1: IDLE - BIENVENIDA Y SALUD (4A)
    ========================================================================== */
 .cfd-state-idle-stage {
   flex: 1;
@@ -298,7 +298,7 @@
 }
 
 /* ==========================================================================
-   🛒 ESTADO 2: CARRITO ACTIVO - ESTILO APPLE WALLET (1A)
+   ESTADO 2: CARRITO ACTIVO - ESTILO APPLE WALLET (1A)
    ========================================================================== */
 .cfd-state-cart-stage {
   flex: 1;
@@ -638,7 +638,7 @@
 }
 
 /* ==========================================================================
-   💜 ESTADO 3A: PAGO YAPE / PLIN - INMERSIÓN TOTAL (2A)
+   ESTADO 3A: PAGO YAPE / PLIN - INMERSIÓN TOTAL (2A)
    ========================================================================== */
 .cfd-state-yape-stage {
   flex: 1;
@@ -659,37 +659,46 @@
 }
 
 .cfd-wallets-badges {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.14);
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  background: rgba(15, 23, 42, 0.35);
   backdrop-filter: blur(12px);
-  padding: 6px 16px;
+  -webkit-backdrop-filter: blur(12px);
+  padding: 5px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   margin-bottom: 10px;
 }
 
-.cfd-badge-yape {
-  font-weight: 900;
-  font-size: 1.15rem;
-  color: #ffffff;
+.cfd-wallet-switch-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 18px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.78);
+  background: transparent;
+  cursor: pointer;
+  min-height: 38px;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease;
 }
 
-.cfd-badge-sep {
-  font-size: 0.82rem;
-  opacity: 0.7;
+.cfd-wallet-switch-btn.active-yape {
+  background: #ffffff;
+  color: #742384;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
 }
 
-.cfd-badge-plin {
-  font-weight: 900;
-  font-size: 1.15rem;
-  color: #00d3b5;
+.cfd-wallet-switch-btn.active-plin {
+  background: #00d3b5;
+  color: #042f2e;
+  box-shadow: 0 4px 14px rgba(0, 211, 181, 0.32);
 }
 
 .cfd-yape-instruction {
   font-size: 0.92rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.88);
   margin: 0;
 }
 
@@ -697,7 +706,7 @@
 .cfd-yape-card {
   background: #ffffff;
   border-radius: 28px;
-  padding: 24px 20px;
+  padding: 22px 20px;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
@@ -705,12 +714,14 @@
   color: #0f172a;
 }
 
-/* Marco de Escaneo con Láser */
+/* Marco de Escaneo con Láser (soporta póster vertical Yape y tarjeta cuadrada Plin sin recortes) */
 .cfd-qr-frame {
   position: relative;
   width: 220px;
-  height: 220px;
-  margin-bottom: 16px;
+  min-height: 212px;
+  height: auto;
+  padding: 4px;
+  margin-bottom: 14px;
 }
 
 .cfd-qr-svg-wrapper {
@@ -827,7 +838,7 @@
 }
 
 /* ==========================================================================
-   💳 ESTADO 3B: PAGO TARJETA - RADAR CONTACTLESS NFC (2A)
+   ESTADO 3B: PAGO TARJETA - RADAR CONTACTLESS NFC (2A)
    ========================================================================== */
 .cfd-state-card-stage {
   flex: 1;
@@ -979,7 +990,7 @@
 }
 
 /* ==========================================================================
-   🧾 ESTADO 4: COMPROBANTE - TICKET TÉRMICO CON BORDES DENTADOS (3A)
+   ESTADO 4: COMPROBANTE - TICKET TÉRMICO CON BORDES DENTADOS (3A)
    ========================================================================== */
 .cfd-state-receipt-stage {
   flex: 1;
@@ -1247,4 +1258,52 @@
   color: #ffffff;
   box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35);
 }
+
+.cfd-tip-icon-svg {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cfd-item-spotlight-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cfd-simulate-pay-btn {
+  width: 100%;
+  min-height: 46px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 10px 24px -6px rgba(16, 185, 129, 0.5);
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.cfd-simulate-pay-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.cfd-simulate-pay-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 

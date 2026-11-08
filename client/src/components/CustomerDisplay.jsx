@@ -1,31 +1,44 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { getProductImage } from '../utils/productImages';
+import PaymentQrBox from './PaymentQrBox';
+import {
+  IconPill,
+  IconShield,
+  IconReceipt,
+  IconCheck,
+  IconPrinter,
+  IconShare
+} from './Icons';
 import './CustomerDisplay.css';
 
-// Consejos farmacéuticos para el carrusel de espera (Estado IDLE - 4A)
 const HEALTH_TIPS = [
   {
-    icon: '💊',
+    iconType: 'pill',
     tag: 'FARMACIA RESPONSABLE',
-    title: 'Alternativas Genéricas',
-    desc: 'Consulte con nuestro Químico Farmacéutico sobre medicamentos genéricos bioequivalentes con la misma eficacia y menor costo.'
+    title: 'Alternativas Genéricas Bioequivalentes',
+    desc: 'Consulte con nuestro Químico Farmacéutico sobre medicamentos genéricos con eficacia terapéutica certificada.'
   },
   {
-    icon: '🌡️',
+    iconType: 'shield',
     tag: 'CALIDAD Y SEGURIDAD',
-    title: 'Control FEFO / DIGEMID',
-    desc: 'Todos nuestros medicamentos cuentan con estricta trazabilidad de lote y fecha de vencimiento certificada.'
+    title: 'Control Estricto FEFO / DIGEMID',
+    desc: 'Cada medicamento dispensado cuenta con trazabilidad de lote y verificación activa de vigencia.'
   },
   {
-    icon: '🧾',
+    iconType: 'receipt',
     tag: 'TRANSPARENCIA FISCAL',
     title: 'Boleta de Venta Electrónica',
-    desc: 'Indique su número de DNI al operador en caja para emitir su comprobante electrónico con validez tributaria SUNAT.'
+    desc: 'Indique su número de DNI en caja para emitir su comprobante electrónico con respaldo tributario SUNAT.'
   }
 ];
 
+function renderTipIcon(type) {
+  if (type === 'shield') return <IconShield size={22} />;
+  if (type === 'receipt') return <IconReceipt size={22} />;
+  return <IconPill size={22} />;
+}
+
 export default function CustomerDisplay() {
-  // Estado del visor recibido desde el POS
   const [visorData, setVisorData] = useState(() => {
     try {
       const stored = localStorage.getItem('botica_visor_payload');
@@ -35,20 +48,15 @@ export default function CustomerDisplay() {
     }
   });
 
-  // Reloj en tiempo real sin segundero (HH:MM AM/PM)
   const [clock, setClock] = useState(() => {
     const d = new Date();
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   });
 
-  // Índice para el carrusel de consejos farmacéuticos (IDLE)
   const [activeTipIdx, setActiveTipIdx] = useState(0);
+  const [simuladoFirma, setSimuladoFirma] = useState(null);
+  const [billeteraVisor, setBilleteraVisor] = useState('Yape');
 
-  // Referencia para detectar el último producto agregado
-  const prevItemsCountRef = useRef(0);
-  const [lastAddedId, setLastAddedId] = useState(null);
-
-  // Reloj en vivo
   useEffect(() => {
     const timer = setInterval(() => {
       const d = new Date();
@@ -57,7 +65,6 @@ export default function CustomerDisplay() {
     return () => clearInterval(timer);
   }, []);
 
-  // Rotación del carrusel de salud cada 5s en IDLE
   useEffect(() => {
     const tipTimer = setInterval(() => {
       setActiveTipIdx((prev) => (prev + 1) % HEALTH_TIPS.length);
@@ -66,13 +73,9 @@ export default function CustomerDisplay() {
   }, []);
 
   // =========================================================================
-  // 🔌 OMNI-SYNC: TRIPLE SINCRONIZACIÓN AUTOMÁTICA (5A)
-  // Canal 1: BroadcastChannel (0ms en la misma PC / simulador)
-  // Canal 2: Window Storage Event (respaldo local)
-  // Canal 3: Polling ligero cada 400ms a /api/visor-estado (celular por Wi-Fi/Red)
+  // OMNI-SYNC: TRIPLE SINCRONIZACIÓN AUTOMÁTICA (5A)
   // =========================================================================
   useEffect(() => {
-    // Canal 1: BroadcastChannel
     let bc = null;
     try {
       bc = new BroadcastChannel('botica_visor_channel');
@@ -87,10 +90,9 @@ export default function CustomerDisplay() {
         }
       };
     } catch {
-      // BroadcastChannel no soportado
+      // BroadcastChannel opcional
     }
 
-    // Canal 2: Storage Event
     const handleStorage = (e) => {
       if (e.key === 'botica_visor_payload' && e.newValue) {
         try {
@@ -108,7 +110,6 @@ export default function CustomerDisplay() {
     };
     window.addEventListener('storage', handleStorage);
 
-    // Canal 3: Polling a la API de Node cada 400ms
     const pollInterval = setInterval(() => {
       fetch('/api/visor-estado', { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : null))
@@ -132,22 +133,6 @@ export default function CustomerDisplay() {
     };
   }, []);
 
-  // Detectar último producto agregado para resaltar con badge
-  useEffect(() => {
-    if (visorData?.items && visorData.items.length > 0) {
-      const currentCount = visorData.items.length;
-      if (currentCount > prevItemsCountRef.current || !lastAddedId) {
-        const lastItem = visorData.items[visorData.items.length - 1];
-        setLastAddedId(lastItem.id_producto);
-      }
-      prevItemsCountRef.current = currentCount;
-    } else {
-      prevItemsCountRef.current = 0;
-      setLastAddedId(null);
-    }
-  }, [visorData?.items]);
-
-  // Vibración háptica en móvil cuando llega un comprobante (3A)
   const comprobanteHandledRef = useRef(null);
   useEffect(() => {
     if (visorData?.modo === 'COMPROBANTE' && visorData.comprobante) {
@@ -158,14 +143,16 @@ export default function CustomerDisplay() {
           if (navigator.vibrate) {
             navigator.vibrate([70, 40, 100]);
           }
-        } catch {}
+        } catch {
+          // Vibración opcional
+        }
       }
     }
-  }, [visorData?.modo, visorData?.comprobante]);
+  }, [visorData?.modo, visorData?.comprobante, visorData?.updatedAt]);
 
-  // Modo actual por defecto: 'IDLE'
   const modo = visorData?.modo || 'IDLE';
-  const items = visorData?.items || [];
+  const items = useMemo(() => visorData?.items || [], [visorData?.items]);
+  const lastAddedId = items.length > 0 ? items[items.length - 1].id_producto : null;
   const total = Number(visorData?.total || 0);
   const totalUnidades = useMemo(() => items.reduce((acc, i) => acc + (i.cantidad || 1), 0), [items]);
   const subtotalNeto = Number(visorData?.subtotalNeto || (total / 1.18).toFixed(2));
@@ -175,11 +162,47 @@ export default function CustomerDisplay() {
   const cliente = visorData?.cliente || 'Público General';
   const comprobante = visorData?.comprobante;
 
-  // Acciones en comprobante (Compartir / Imprimir)
+  const firmaOrdenActual = `${modo}:${items.length}:${total.toFixed(2)}`;
+  const simulandoPago =
+    simuladoFirma === firmaOrdenActual && modo !== 'COMPROBANTE' && modo !== 'IDLE';
+
+  // Confirmación interactiva de pago desde Pantalla de Cliente (PLAN.md 2.C)
+  const handleSimularPagoRealizado = () => {
+    if (simulandoPago) return;
+    setSimuladoFirma(firmaOrdenActual);
+
+    const nowTs = Date.now();
+    const confirmPayload = {
+      ...(visorData || {}),
+      pagoSimuladoAt: nowTs,
+      updatedAt: nowTs
+    };
+
+    try {
+      const bc = new BroadcastChannel('botica_visor_channel');
+      bc.postMessage(confirmPayload);
+      bc.close();
+    } catch {
+      // BroadcastChannel opcional
+    }
+
+    try {
+      localStorage.setItem('botica_visor_payload', JSON.stringify(confirmPayload));
+    } catch {
+      // Storage opcional
+    }
+
+    fetch('/api/visor-estado', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pagoSimuladoAt: nowTs })
+    }).catch(() => {});
+  };
+
   const handleShareWhatsApp = () => {
     if (!comprobante) return;
-    const text = `🧾 *BOTICA NOVA S.A.C.*%0AComprobante: *${comprobante.numero}*%0ACliente: ${comprobante.cliente}%0ATotal Pagado: S/ ${Number(comprobante.total).toFixed(2)}%0AFecha: ${comprobante.fecha || new Date().toLocaleString()}%0A%0AGracias por su preferencia.`;
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+    const text = `*BOTICA NOVA S.A.C.*%0AComprobante Electrónico: *${comprobante.numero}*%0APaciente/Cliente: ${comprobante.cliente}%0AImporte Total: S/ ${Number(comprobante.total).toFixed(2)}%0AFecha: ${comprobante.fecha || new Date().toLocaleString('es-PE')}%0A%0AGracias por su preferencia.`;
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleDownloadPDF = () => {
@@ -190,15 +213,12 @@ export default function CustomerDisplay() {
     <div className="cfd-viewport-wrapper">
       <div className={`cfd-screen-container cfd-mode-${modo.toLowerCase()}`}>
 
-        {/* ================================================================= */}
-        {/* 🌿 ESTADO 1: IDLE - BIENVENIDA Y SALUD (4A)                      */}
-        {/* ================================================================= */}
+        {/* ESTADO 1: IDLE - BIENVENIDA Y SALUD */}
         {modo === 'IDLE' && (
           <div className="cfd-state-idle-stage">
-            {/* Cabecera Superior */}
             <header className="cfd-top-header">
               <div className="cfd-brand-pill">
-                <img src="/favicon.svg" alt="Botica Nova" className="cfd-brand-logo" />
+                <img src="/favicon.svg" alt="Botica Nova" width="32" height="32" className="cfd-brand-logo" />
                 <span className="cfd-brand-title">Botica Nova</span>
               </div>
               <div className="cfd-status-beacon">
@@ -208,7 +228,6 @@ export default function CustomerDisplay() {
               <div className="cfd-clock-tag">{clock}</div>
             </header>
 
-            {/* Tarjeta Principal de Bienvenida */}
             <main className="cfd-idle-main">
               <div className="cfd-idle-hero-card">
                 <div className="cfd-idle-cross-aura">
@@ -228,17 +247,18 @@ export default function CustomerDisplay() {
 
                 <div className="cfd-idle-scan-hint">
                   <span className="cfd-hint-pulse" />
-                  <span>Esperando inicio de turno o despacho...</span>
+                  <span>Esperando inicio de despacho en mostrador...</span>
                 </div>
               </div>
 
-              {/* Carrusel Automático de Consejos de Salud (4A) */}
               <div className="cfd-health-carousel">
                 <div className="cfd-carousel-badge">
-                  <span>CONSEJO FARMACÉUTICO BOTICA NOVA</span>
+                  <span>ORIENTACIÓN FARMACÉUTICA BOTICA NOVA</span>
                 </div>
                 <div key={activeTipIdx} className="cfd-carousel-card cfd-fade-slide">
-                  <div className="cfd-tip-icon">{HEALTH_TIPS[activeTipIdx].icon}</div>
+                  <div className="cfd-tip-icon-svg">
+                    {renderTipIcon(HEALTH_TIPS[activeTipIdx].iconType)}
+                  </div>
                   <div className="cfd-tip-content">
                     <span className="cfd-tip-tag">{HEALTH_TIPS[activeTipIdx].tag}</span>
                     <h3 className="cfd-tip-title">{HEALTH_TIPS[activeTipIdx].title}</h3>
@@ -246,7 +266,6 @@ export default function CustomerDisplay() {
                   </div>
                 </div>
 
-                {/* Indicadores de diapositiva */}
                 <div className="cfd-carousel-dots">
                   {HEALTH_TIPS.map((_, idx) => (
                     <span
@@ -258,23 +277,19 @@ export default function CustomerDisplay() {
               </div>
             </main>
 
-            {/* Pie de pantalla seguro */}
             <footer className="cfd-idle-footer">
-              <span>● Conexión segura en tiempo real · Terminal POS v2.4</span>
+              <span>Conexión sincronizada en tiempo real · Terminal POS v2.4</span>
             </footer>
           </div>
         )}
 
-        {/* ================================================================= */}
-        {/* 🛒 ESTADO 2: CARRITO ACTIVO - ESTILO APPLE WALLET (1A)           */}
-        {/* ================================================================= */}
+        {/* ESTADO 2: CARRITO ACTIVO */}
         {modo === 'CARRITO' && (
           <div className="cfd-state-cart-stage">
-            {/* Barra Superior Fija */}
             <header className="cfd-cart-sticky-header">
               <div className="cfd-cart-header-top">
                 <div className="cfd-brand-pill-compact">
-                  <img src="/favicon.svg" alt="Botica Nova" className="cfd-brand-logo-small" />
+                  <img src="/favicon.svg" alt="Botica Nova" width="22" height="22" className="cfd-brand-logo-small" />
                   <span className="cfd-brand-name-bold">Botica Nova</span>
                 </div>
                 <div className="cfd-clock-mini">{clock}</div>
@@ -286,16 +301,15 @@ export default function CustomerDisplay() {
                   <span className="cfd-patient-name">{cliente}</span>
                 </div>
                 <div className="cfd-items-badge">
-                  {totalUnidades} {totalUnidades === 1 ? 'producto' : 'productos'}
+                  {totalUnidades} {totalUnidades === 1 ? 'unidad' : 'unidades'}
                 </div>
               </div>
             </header>
 
-            {/* Lista Visual de Productos (100% Read-Only) */}
             <main className="cfd-cart-items-feed">
               {items.map((item, index) => {
                 const isLast = item.id_producto === lastAddedId;
-                const imgSrc = item.imagen || getProductImage(item.nombre);
+                const imgSrc = item.imagen || getProductImage(item.nombre, item.id_producto);
 
                 return (
                   <article
@@ -305,22 +319,25 @@ export default function CustomerDisplay() {
                   >
                     {isLast && (
                       <div className="cfd-item-spotlight-badge">
-                        <span>✨ Registrado en caja</span>
+                        <IconCheck size={11} />
+                        <span>Registrado en caja</span>
                       </div>
                     )}
 
                     <div className="cfd-item-body">
-                      {/* Miniatura nítida del medicamento */}
                       <div className="cfd-item-thumb-wrapper">
                         <img
                           src={imgSrc}
                           alt={item.nombre}
+                          width="44"
+                          height="44"
                           className="cfd-item-thumb"
-                          onError={(e) => { e.currentTarget.src = '/favicon.svg'; }}
+                          onError={(e) => {
+                            e.currentTarget.src = '/favicon.svg';
+                          }}
                         />
                       </div>
 
-                      {/* Información técnica y comercial */}
                       <div className="cfd-item-info">
                         <span className="cfd-item-category">{item.categoria || 'Medicamento Farmacéutico'}</span>
                         <h2 className="cfd-item-name">{item.nombre}</h2>
@@ -330,7 +347,6 @@ export default function CustomerDisplay() {
                         </div>
                       </div>
 
-                      {/* Subtotal de línea */}
                       <div className="cfd-item-subtotal-column">
                         <span className="cfd-subtotal-label">Subtotal</span>
                         <span className="cfd-subtotal-val">S/ {Number(item.subtotal).toFixed(2)}</span>
@@ -341,7 +357,6 @@ export default function CustomerDisplay() {
               })}
             </main>
 
-            {/* Banner Dinámico de Efectivo y Vuelto (si se ingresó efectivo en caja) */}
             {efectivoRecibido > 0 && (
               <div className="cfd-cash-change-banner cfd-spring-in">
                 <div className="cfd-cash-row">
@@ -355,7 +370,6 @@ export default function CustomerDisplay() {
               </div>
             )}
 
-            {/* Dock Inferior Fijo de Totales e Impuestos */}
             <footer className="cfd-bottom-dock">
               <div className="cfd-dock-breakdown">
                 <div className="cfd-tax-row">
@@ -377,28 +391,60 @@ export default function CustomerDisplay() {
                   S/ {total.toFixed(2)}
                 </div>
               </div>
+
+              {visorData?.esperandoConfirmacionVisor && (
+                <button
+                  type="button"
+                  disabled={simulandoPago}
+                  onClick={handleSimularPagoRealizado}
+                  className="cfd-simulate-pay-btn"
+                  style={{ marginTop: '12px' }}
+                >
+                  <IconCheck size={17} />
+                  <span>{simulandoPago ? 'Confirmando en caja...' : 'Simular Pago Realizado'}</span>
+                </button>
+              )}
             </footer>
           </div>
         )}
 
-        {/* ================================================================= */}
-        {/* 💜 ESTADO 3A: PAGO YAPE / PLIN - INMERSIÓN A PANTALLA COMPLETA    */}
-        {/* ================================================================= */}
+        {/* ESTADO 3A: PAGO YAPE / PLIN CON SELECTOR DE QR REAL (yape.jpeg / plin.jpeg) */}
         {modo === 'PAGO_YAPE' && (
-          <div className="cfd-state-yape-stage">
-            {/* Header Yape / Plin */}
+          <div
+            className="cfd-state-yape-stage"
+            style={
+              billeteraVisor === 'Plin'
+                ? { background: 'linear-gradient(160deg, #0369a1 0%, #0f172a 75%, #082f49 100%)' }
+                : undefined
+            }
+          >
             <header className="cfd-yape-header">
-              <div className="cfd-wallets-badges">
-                <span className="cfd-badge-yape">Yape</span>
-                <span className="cfd-badge-sep">o</span>
-                <span className="cfd-badge-plin">Plin</span>
+              <div className="cfd-wallets-badges" role="tablist" aria-label="Elegir código QR">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={billeteraVisor === 'Yape'}
+                  onClick={() => setBilleteraVisor('Yape')}
+                  className={`cfd-wallet-switch-btn ${billeteraVisor === 'Yape' ? 'active-yape' : ''}`}
+                >
+                  QR Yape
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={billeteraVisor === 'Plin'}
+                  onClick={() => setBilleteraVisor('Plin')}
+                  className={`cfd-wallet-switch-btn ${billeteraVisor === 'Plin' ? 'active-plin' : ''}`}
+                >
+                  QR Plin
+                </button>
               </div>
-              <p className="cfd-yape-instruction">Escanea el código QR desde tu app para pagar</p>
+              <p className="cfd-yape-instruction">
+                Escanee el código QR oficial de {billeteraVisor} desde su aplicación móvil
+              </p>
             </header>
 
-            {/* Tarjeta Central de Pago con QR Vectorial */}
             <main className="cfd-yape-card">
-              {/* Esquinas y láser de escaneo animado */}
               <div className="cfd-qr-frame">
                 <span className="cfd-corner tl" />
                 <span className="cfd-corner tr" />
@@ -406,97 +452,67 @@ export default function CustomerDisplay() {
                 <span className="cfd-corner br" />
                 <div className="cfd-qr-laser-beam" />
 
-                {/* Código QR SVG de Alta Definición */}
-                <div className="cfd-qr-svg-wrapper">
-                  <svg viewBox="0 0 256 256" className="cfd-qr-svg">
-                    <rect width="256" height="256" fill="#ffffff" rx="16" />
-                    {/* Patrón de Posición Superior Izquierda */}
-                    <rect x="24" y="24" width="56" height="56" rx="8" fill="#742384" />
-                    <rect x="36" y="36" width="32" height="32" rx="4" fill="#ffffff" />
-                    <rect x="44" y="44" width="16" height="16" rx="2" fill="#742384" />
-
-                    {/* Patrón de Posición Superior Derecha */}
-                    <rect x="176" y="24" width="56" height="56" rx="8" fill="#742384" />
-                    <rect x="188" y="36" width="32" height="32" rx="4" fill="#ffffff" />
-                    <rect x="196" y="44" width="16" height="16" rx="2" fill="#742384" />
-
-                    {/* Patrón de Posición Inferior Izquierda */}
-                    <rect x="24" y="176" width="56" height="56" rx="8" fill="#742384" />
-                    <rect x="36" y="188" width="32" height="32" rx="4" fill="#ffffff" />
-                    <rect x="44" y="196" width="16" height="16" rx="2" fill="#742384" />
-
-                    {/* Módulos de Datos Decorativos de Alta Densidad */}
-                    <rect x="96" y="28" width="16" height="16" rx="2" fill="#742384" />
-                    <rect x="124" y="28" width="16" height="16" rx="2" fill="#00d3b5" />
-                    <rect x="96" y="56" width="24" height="24" rx="3" fill="#742384" />
-                    <rect x="132" y="56" width="16" height="16" rx="2" fill="#742384" />
-                    
-                    <rect x="28" y="96" width="16" height="16" rx="2" fill="#742384" />
-                    <rect x="56" y="96" width="24" height="16" rx="2" fill="#00d3b5" />
-                    <rect x="28" y="124" width="24" height="24" rx="3" fill="#742384" />
-                    <rect x="64" y="124" width="16" height="16" rx="2" fill="#742384" />
-
-                    <rect x="100" y="100" width="56" height="56" rx="28" fill="#742384" />
-                    <circle cx="128" cy="128" r="18" fill="#ffffff" />
-                    <circle cx="128" cy="128" r="9" fill="#00d3b5" />
-
-                    <rect x="176" y="96" width="16" height="16" rx="2" fill="#742384" />
-                    <rect x="204" y="96" width="28" height="16" rx="2" fill="#742384" />
-                    <rect x="176" y="124" width="24" height="24" rx="3" fill="#00d3b5" />
-                    <rect x="212" y="124" width="20" height="20" rx="2" fill="#742384" />
-
-                    <rect x="96" y="176" width="20" height="20" rx="2" fill="#742384" />
-                    <rect x="128" y="176" width="16" height="16" rx="2" fill="#00d3b5" />
-                    <rect x="156" y="176" width="24" height="24" rx="3" fill="#742384" />
-                    <rect x="192" y="176" width="16" height="16" rx="2" fill="#742384" />
-                    <rect x="220" y="176" width="12" height="12" rx="2" fill="#00d3b5" />
-
-                    <rect x="96" y="208" width="32" height="24" rx="3" fill="#742384" />
-                    <rect x="140" y="208" width="16" height="16" rx="2" fill="#742384" />
-                    <rect x="168" y="208" width="24" height="24" rx="3" fill="#00d3b5" />
-                    <rect x="204" y="208" width="28" height="24" rx="3" fill="#742384" />
-                  </svg>
+                <div
+                  className="cfd-qr-svg-wrapper"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <PaymentQrBox
+                    metodo={billeteraVisor}
+                    selectedWallet={billeteraVisor}
+                    size={212}
+                  />
                 </div>
               </div>
 
-              {/* Datos de Comercio y Monto */}
               <div className="cfd-yape-merchant-badge">
-                <span className="cfd-verified-check">✓</span>
-                <span>BOTICA NOVA S.A.C.</span>
+                <IconCheck size={13} />
+                <span>BOTICA NOVA S.A.C. · QR VERIFICADO</span>
               </div>
 
               <div className="cfd-yape-amount-box">
-                <span className="cfd-yape-amount-label">Monto exacto a pagar:</span>
-                <span className="cfd-yape-amount-val">S/ {total.toFixed(2)}</span>
+                <span className="cfd-yape-amount-label">Monto exacto a abonar:</span>
+                <span
+                  className="cfd-yape-amount-val"
+                  style={billeteraVisor === 'Plin' ? { color: '#0369a1' } : undefined}
+                >
+                  S/ {total.toFixed(2)}
+                </span>
               </div>
+
+              <button
+                type="button"
+                disabled={simulandoPago}
+                onClick={handleSimularPagoRealizado}
+                className="cfd-simulate-pay-btn"
+                style={{ marginTop: '16px' }}
+              >
+                <IconCheck size={17} />
+                <span>{simulandoPago ? 'Notificando pago a caja...' : 'Simular Pago Realizado'}</span>
+              </button>
             </main>
 
-            {/* Footer con estado de espera en caja */}
             <footer className="cfd-yape-footer">
               <div className="cfd-yape-summary-tag">
-                {totalUnidades} medicamentos en su pedido
+                {totalUnidades} {totalUnidades === 1 ? 'medicamento' : 'medicamentos'} en su orden
               </div>
               <div className="cfd-yape-pulse-wait">
                 <span className="cfd-yape-dot-pulse" />
-                <span>Esperando confirmación de pago en caja...</span>
+                <span>Esperando validación de abono en caja...</span>
               </div>
             </footer>
           </div>
         )}
 
-        {/* ================================================================= */}
-        {/* 💳 ESTADO 3B: PAGO TARJETA - RADAR CONTACTLESS NFC                */}
-        {/* ================================================================= */}
+        {/* ESTADO 3B: PAGO TARJETA - RADAR CONTACTLESS NFC */}
         {modo === 'PAGO_TARJETA' && (
           <div className="cfd-state-card-stage">
             <header className="cfd-card-header">
-              <span className="cfd-card-badge">PAGO CON TARJETA</span>
-              <h2 className="cfd-card-heading">Acerque su tarjeta o teléfono</h2>
-              <p className="cfd-card-subheading">Terminal POS Izipay / Niubiz sin contacto habilitado</p>
+              <span className="cfd-card-badge">TERMINAL CONTACTLESS</span>
+              <h2 className="cfd-card-heading">Acerque su tarjeta o dispositivo</h2>
+              <p className="cfd-card-subheading">Lectura sin contacto habilitada para su operación</p>
             </header>
 
             <main className="cfd-card-main">
-              {/* Radar de Ondas NFC Concéntricas */}
               <div className="cfd-nfc-radar-container">
                 <span className="cfd-nfc-wave w1" />
                 <span className="cfd-nfc-wave w2" />
@@ -509,51 +525,54 @@ export default function CustomerDisplay() {
                 </div>
               </div>
 
-              {/* Monto Gigante */}
               <div className="cfd-card-amount-block">
-                <span className="cfd-card-amount-label">Total a debitar</span>
+                <span className="cfd-card-amount-label">Importe total a debitar</span>
                 <span className="cfd-card-amount-val">S/ {total.toFixed(2)}</span>
               </div>
 
-              {/* Logos de Franquicias */}
-              <div className="cfd-card-brands">
+              <div className="cfd-card-brands" style={{ marginBottom: '20px' }}>
                 <span className="cfd-brand-chip">VISA</span>
                 <span className="cfd-brand-chip">Mastercard</span>
                 <span className="cfd-brand-chip">Amex</span>
                 <span className="cfd-brand-chip">Apple Pay</span>
                 <span className="cfd-brand-chip">Google Pay</span>
               </div>
+
+              <button
+                type="button"
+                disabled={simulandoPago}
+                onClick={handleSimularPagoRealizado}
+                className="cfd-simulate-pay-btn"
+              >
+                <IconCheck size={17} />
+                <span>{simulandoPago ? 'Procesando autorización...' : 'Simular Pago Realizado'}</span>
+              </button>
             </main>
 
             <footer className="cfd-card-footer">
               <div className="cfd-card-pulse-wait">
                 <span className="cfd-card-dot-pulse" />
-                <span>Esperando lectura del chip o dispositivo...</span>
+                <span>Esperando lectura del chip o billetera NFC...</span>
               </div>
             </footer>
           </div>
         )}
 
-        {/* ================================================================= */}
-        {/* 🧾 ESTADO 4: COMPROBANTE FINAL - BOLETA ELECTRÓNICA SUNAT (3A)    */}
-        {/* ================================================================= */}
+        {/* ESTADO 4: COMPROBANTE FINAL - BOLETA ELECTRÓNICA SUNAT */}
         {modo === 'COMPROBANTE' && (
           <div className="cfd-state-receipt-stage">
-            {/* Banner de Éxito Superior */}
             <div className="cfd-receipt-success-banner">
               <div className="cfd-success-circle">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="cfd-check-svg">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <h2 className="cfd-success-title">¡Pago Confirmado!</h2>
+              <h2 className="cfd-success-title">Operación Confirmada</h2>
               <p className="cfd-success-subtitle">Su comprobante electrónico ha sido emitido con éxito</p>
             </div>
 
-            {/* Ticket Digital con Textura Térmica y Bordes Dentados */}
             <div className="cfd-receipt-paper-wrapper">
               <div className="cfd-receipt-paper">
-                {/* Encabezado Fiscal */}
                 <div className="cfd-receipt-header">
                   <h3 className="cfd-receipt-company">BOTICA NOVA S.A.C.</h3>
                   <div className="cfd-receipt-meta">R.U.C. 20608493021</div>
@@ -565,25 +584,23 @@ export default function CustomerDisplay() {
 
                 <div className="cfd-receipt-divider-dashed" />
 
-                {/* Datos de Operación */}
                 <div className="cfd-receipt-info-grid">
                   <div className="cfd-info-row">
                     <span>Fecha y hora:</span>
-                    <strong>{comprobante?.fecha || new Date().toLocaleString()}</strong>
+                    <strong>{comprobante?.fecha || clock}</strong>
                   </div>
                   <div className="cfd-info-row">
                     <span>Cliente:</span>
                     <strong>{comprobante?.cliente || cliente}</strong>
                   </div>
                   <div className="cfd-info-row">
-                    <span>Método de pago:</span>
+                    <span>Modalidad de pago:</span>
                     <strong>{comprobante?.metodoPago || visorData?.metodoPago || 'Efectivo'}</strong>
                   </div>
                 </div>
 
                 <div className="cfd-receipt-divider-dashed" />
 
-                {/* Tabla de Medicamentos Comprados */}
                 <table className="cfd-receipt-table">
                   <thead>
                     <tr>
@@ -608,7 +625,6 @@ export default function CustomerDisplay() {
 
                 <div className="cfd-receipt-divider-dashed" />
 
-                {/* Desglose Tributario */}
                 <div className="cfd-receipt-taxes">
                   <div className="cfd-tax-line">
                     <span>Op. Gravada:</span>
@@ -626,7 +642,6 @@ export default function CustomerDisplay() {
 
                 <div className="cfd-receipt-divider-dashed" />
 
-                {/* Código QR Oficial SUNAT */}
                 <div className="cfd-receipt-qr-section">
                   <div className="cfd-receipt-sunat-qr">
                     <svg viewBox="0 0 100 100" className="cfd-sunat-svg">
@@ -657,26 +672,27 @@ export default function CustomerDisplay() {
                 </div>
 
                 <div className="cfd-receipt-thanks">
-                  <span>✓ Gracias por confiar su salud en Botica Nova</span>
+                  <span>Gracias por confiar el cuidado de su salud a Botica Nova</span>
                 </div>
               </div>
             </div>
 
-            {/* Botones de Acción (Descargar / Compartir) */}
-            <div className="cfd-receipt-actions">
+            <div className="cfd-receipt-actions no-print">
               <button
                 type="button"
                 onClick={handleDownloadPDF}
                 className="cfd-btn-receipt cfd-btn-pdf"
               >
-                📥 Imprimir / Guardar PDF
+                <IconPrinter size={17} />
+                <span>Imprimir / Guardar PDF</span>
               </button>
               <button
                 type="button"
                 onClick={handleShareWhatsApp}
                 className="cfd-btn-receipt cfd-btn-wa"
               >
-                💬 Compartir por WhatsApp
+                <IconShare size={17} />
+                <span>Enviar Comprobante por WhatsApp</span>
               </button>
             </div>
           </div>
@@ -686,4 +702,3 @@ export default function CustomerDisplay() {
     </div>
   );
 }
-

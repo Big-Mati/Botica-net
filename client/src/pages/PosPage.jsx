@@ -1,27 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getProductImage } from '../utils/productImages';
+import PaymentQrBox from '../components/PaymentQrBox';
+import {
+  IconSearch,
+  IconPlus,
+  IconMinus,
+  IconClose,
+  IconCheck,
+  IconLocation,
+  IconCash,
+  IconQr,
+  IconCard,
+  IconMonitor,
+  IconBolt,
+  IconReceipt,
+  IconAlert,
+  IconEye,
+  IconPrinter,
+  IconShare
+} from '../components/Icons';
 
-export default function PosPage() {
+export default function PosPage({ sesion, onInventoryMutated }) {
   const [productos, setProductos] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
-  const [mensajeVenta, setMensajeVenta] = useState(null);
+  const [avisoUI, setAvisoUI] = useState(null); // { tipo: 'success' | 'warn' | 'error', texto, detalle }
 
-  // Estados del proceso de pago sincronizados con el Visor de Cliente (CFD)
-  const [cliente, setCliente] = useState('Público General');
+  // Filtros de despacho rápido
+  const [busqueda, setBusqueda] = useState('');
+  const [categoriaActiva, setCategoriaActiva] = useState('TODAS');
+  const searchInputRef = useRef(null);
+  const dniInputRef = useRef(null);
+
+  // Estados de cobro claros y sincronización con Visor de Cliente
+  const [modoCliente, setModoCliente] = useState('GENERAL'); // 'GENERAL' | 'DOCUMENTO'
+  const [clienteDoc, setClienteDoc] = useState('');
   const [metodoPago, setMetodoPago] = useState('Efectivo'); // 'Efectivo' | 'Yape / Plin' | 'Tarjeta'
+  const [mostrarQrEnCaja, setMostrarQrEnCaja] = useState(false);
   const [efectivoRecibido, setEfectivoRecibido] = useState('');
   const [comprobanteEmitido, setComprobanteEmitido] = useState(null);
+  const [mostrarReciboCaja, setMostrarReciboCaja] = useState(false);
+  const [procesandoVenta, setProcesandoVenta] = useState(false);
 
-  useEffect(() => {
+  const clienteFinal =
+    modoCliente === 'DOCUMENTO' && clienteDoc.trim() ? clienteDoc.trim() : 'Público General';
+
+  // Estado de espera de confirmación desde Visor de Cliente (PLAN.md 2.C)
+  const [esperandoConfirmacionVisor, setEsperandoConfirmacionVisor] = useState(false);
+  const solicitudVisorTsRef = useRef(0);
+  const procesandoRef = useRef(false);
+
+  const cargarProductos = useCallback(() => {
     fetch('/api/productos')
       .then((res) => {
-        if (!res.ok) throw new Error('No se pudo conectar con la API de Express');
+        if (!res.ok) throw new Error('No fue posible conectar con el servicio de catálogo.');
         return res.json();
       })
       .then((data) => {
-        setProductos(data);
+        setProductos(Array.isArray(data) ? data : []);
         setCargando(false);
       })
       .catch((err) => {
@@ -30,15 +67,43 @@ export default function PosPage() {
       });
   }, []);
 
-  const total = carrito.reduce((acc, item) => acc + item.subtotal, 0);
+  useEffect(() => {
+    cargarProductos();
+  }, [cargarProductos]);
+
+  const categoriasDisponibles = useMemo(() => {
+    const setCats = new Set(productos.map((p) => p.categoria).filter(Boolean));
+    return ['TODAS', ...Array.from(setCats).sort()];
+  }, [productos]);
+
+  const productosFiltrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return productos.filter((p) => {
+      if (categoriaActiva !== 'TODAS' && p.categoria !== categoriaActiva) return false;
+      if (!q) return true;
+      return (
+        p.nombre.toLowerCase().includes(q) ||
+        (p.categoria || '').toLowerCase().includes(q) ||
+        (p.lote || '').toLowerCase().includes(q) ||
+        (p.ubicacion || '').toLowerCase().includes(q)
+      );
+    });
+  }, [productos, busqueda, categoriaActiva]);
+
+  const total = useMemo(() => carrito.reduce((acc, item) => acc + item.subtotal, 0), [carrito]);
   const subtotalNeto = Number((total / 1.18).toFixed(2));
   const igv = Number((total - subtotalNeto).toFixed(2));
   const numEfectivo = Number(efectivoRecibido) || 0;
   const vuelto = numEfectivo > total ? Number((numEfectivo - total).toFixed(2)) : 0;
 
+  const metricasCatalogo = useMemo(() => {
+    const criticos = productos.filter((p) => Number(p.stock) <= 15).length;
+    const unidadesTicket = carrito.reduce((acc, i) => acc + i.cantidad, 0);
+    return { totalSkus: productos.length, criticos, unidadesTicket };
+  }, [productos, carrito]);
+
   // =========================================================================
-  // 🔌 EMISOR REACTIVO OMNI-SYNC HACIA EL VISOR DE CLIENTE (5A)
-  // Emite automáticamente cada cambio de carrito, método de pago o comprobante
+  // EMISOR REACTIVO OMNI-SYNC HACIA EL VISOR DE CLIENTE (5A)
   // =========================================================================
   useEffect(() => {
     let modo = 'IDLE';
@@ -46,7 +111,7 @@ export default function PosPage() {
       modo = 'COMPROBANTE';
     } else if (carrito.length === 0) {
       modo = 'IDLE';
-    } else if (metodoPago === 'Yape' || metodoPago === 'Yape / Plin') {
+    } else if (metodoPago === 'Yape' || metodoPago === 'Plin' || metodoPago === 'Yape / Plin') {
       modo = 'PAGO_YAPE';
     } else if (metodoPago === 'Tarjeta') {
       modo = 'PAGO_TARJETA';
@@ -63,7 +128,7 @@ export default function PosPage() {
         precio: i.precio,
         cantidad: i.cantidad,
         subtotal: i.subtotal,
-        imagen: getProductImage(i.nombre)
+        imagen: getProductImage(i.nombre, i.id_producto)
       })),
       total,
       subtotalNeto,
@@ -71,51 +136,308 @@ export default function PosPage() {
       metodoPago,
       efectivoRecibido: numEfectivo,
       vuelto,
-      cliente: cliente.trim() || 'Público General',
+      cliente: clienteFinal,
       comprobante: comprobanteEmitido,
+      esperandoConfirmacionVisor,
+      pagoSimuladoAt: null,
       updatedAt: Date.now()
     };
 
-    // Canal 1: BroadcastChannel (0 ms en la misma PC / simulador)
     try {
       const bc = new BroadcastChannel('botica_visor_channel');
       bc.postMessage(payload);
       bc.close();
-    } catch {}
+    } catch {
+      // BroadcastChannel opcional
+    }
 
-    // Canal 2: LocalStorage (respaldo cross-tab)
     try {
       localStorage.setItem('botica_visor_payload', JSON.stringify(payload));
-    } catch {}
+    } catch {
+      // Storage opcional
+    }
 
-    // Canal 3: POST /api/visor-estado (para smartphone por Wi-Fi / Hotspot)
     fetch('/api/visor-estado', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     }).catch(() => {});
-  }, [carrito, metodoPago, numEfectivo, vuelto, subtotalNeto, igv, cliente, comprobanteEmitido, total]);
+  }, [
+    carrito,
+    metodoPago,
+    numEfectivo,
+    vuelto,
+    subtotalNeto,
+    igv,
+    clienteFinal,
+    comprobanteEmitido,
+    esperandoConfirmacionVisor,
+    total
+  ]);
 
+  // =========================================================================
+  // EMISIÓN ATÓMICA DE COMPROBANTE (POST /api/ventas)
+  // =========================================================================
+  const emitirComprobante = useCallback(
+    async (origenConfirmacion = 'DIRECTO') => {
+      if (carrito.length === 0 || procesandoRef.current) {
+        if (carrito.length === 0) {
+          setAvisoUI({
+            tipo: 'warn',
+            texto: 'Agregue al menos un medicamento al ticket antes de emitir el comprobante.'
+          });
+        }
+        return;
+      }
+
+      procesandoRef.current = true;
+      setProcesandoVenta(true);
+      setEsperandoConfirmacionVisor(false);
+
+      try {
+        const res = await fetch('/api/ventas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cliente: clienteFinal,
+            metodoPago,
+            id_vendedor: sesion?.id_vendedor || 1,
+            items: carrito.map((i) => ({
+              id_producto: i.id_producto,
+              cantidad: i.cantidad,
+              precio_unitario: i.precio
+            }))
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          const metodoRegistrado = data.metodo_pago || metodoPago;
+          const comp = {
+            numero: data.comprobante,
+            cliente: clienteFinal,
+            vendedor: sesion?.nombre || sesion?.usuario || 'Carlos Mendoza',
+            metodoPago: metodoRegistrado,
+            total,
+            subtotalNeto,
+            igv,
+            efectivoRecibido:
+              metodoRegistrado === 'Efectivo' && numEfectivo > 0 ? numEfectivo : null,
+            vuelto:
+              metodoRegistrado === 'Efectivo' && numEfectivo >= total ? vuelto : null,
+            fecha: new Date().toLocaleString('es-PE'),
+            items: carrito.map((i) => ({
+              id_producto: i.id_producto,
+              nombre: i.nombre,
+              categoria: i.categoria,
+              cantidad: i.cantidad,
+              precio: i.precio,
+              subtotal: i.subtotal
+            }))
+          };
+
+          setComprobanteEmitido(comp);
+          setMostrarReciboCaja(true);
+          setAvisoUI({
+            tipo: 'success',
+            texto: `Boleta Electrónica ${data.comprobante} emitida correctamente (${metodoRegistrado}).`,
+            detalle:
+              origenConfirmacion === 'VISOR'
+                ? 'Pago confirmado por el cliente desde el Visor interactivo y asentado en Kardex.'
+                : 'Stock descontado atómicamente en MySQL y comprobante enviado a la Pantalla del Cliente.'
+          });
+          setCarrito([]);
+          setEfectivoRecibido('');
+          setMostrarQrEnCaja(false);
+          cargarProductos();
+          if (onInventoryMutated) onInventoryMutated();
+        } else {
+          setAvisoUI({
+            tipo: 'error',
+            texto: data.message || 'No fue posible completar la emisión de la boleta.'
+          });
+        }
+      } catch {
+        setAvisoUI({
+          tipo: 'error',
+          texto: 'Error de red al comunicarse con el servidor transaccional.'
+        });
+      } finally {
+        procesandoRef.current = false;
+        setProcesandoVenta(false);
+      }
+    },
+    [
+      carrito,
+      clienteFinal,
+      metodoPago,
+      sesion,
+      total,
+      subtotalNeto,
+      igv,
+      numEfectivo,
+      vuelto,
+      cargarProductos,
+      onInventoryMutated
+    ]
+  );
+
+  // =========================================================================
+  // FLUJO DE COBRO EN SEGUNDA PANTALLA (PLAN.md 2.C — OPCIÓN VISOR)
+  // =========================================================================
+  const iniciarCobroEnVisor = () => {
+    if (carrito.length === 0 || procesandoVenta) return;
+    if (metodoPago === 'Efectivo') {
+      setMetodoPago('Yape / Plin');
+    }
+    solicitudVisorTsRef.current = Date.now();
+    setEsperandoConfirmacionVisor(true);
+    setAvisoUI({
+      tipo: 'warn',
+      texto: 'Cobro proyectado en la Pantalla del Cliente.',
+      detalle: 'El cliente puede confirmar el pago en su pantalla o usted puede emitir la boleta directamente con F12.'
+    });
+  };
+
+  useEffect(() => {
+    if (!esperandoConfirmacionVisor) return;
+
+    const verificarConfirmacion = (data) => {
+      if (
+        data &&
+        Number(data.pagoSimuladoAt) > 0 &&
+        Number(data.pagoSimuladoAt) >= solicitudVisorTsRef.current
+      ) {
+        solicitudVisorTsRef.current = Date.now() + 60000;
+        emitirComprobante('VISOR');
+      }
+    };
+
+    let bc = null;
+    try {
+      bc = new BroadcastChannel('botica_visor_channel');
+      bc.onmessage = (ev) => verificarConfirmacion(ev.data);
+    } catch {
+      // BroadcastChannel opcional
+    }
+
+    const onStorage = (e) => {
+      if (e.key === 'botica_visor_payload' && e.newValue) {
+        try {
+          verificarConfirmacion(JSON.parse(e.newValue));
+        } catch {
+          // Ignorar JSON inválido
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    const poll = setInterval(() => {
+      fetch('/api/visor-estado', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => verificarConfirmacion(d))
+        .catch(() => {});
+    }, 650);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', onStorage);
+      clearInterval(poll);
+    };
+  }, [esperandoConfirmacionVisor, emitirComprobante]);
+
+  const cerrarModalRecibo = useCallback(() => {
+    setMostrarReciboCaja(false);
+    setTimeout(() => {
+      if (searchInputRef.current) searchInputRef.current.focus();
+    }, 30);
+  }, []);
+
+  const compartirReciboWhatsApp = useCallback(() => {
+    if (!comprobanteEmitido) return;
+    const lineasItems = (comprobanteEmitido.items || [])
+      .map(
+        (it) =>
+          `- ${it.cantidad}x ${it.nombre}: S/ ${Number(it.subtotal).toFixed(2)}`
+      )
+      .join('\n');
+
+    const mensaje = [
+      '*BOTICA NOVA S.A.C. - RUC 20608493021*',
+      `Boleta Electronica: *${comprobanteEmitido.numero}*`,
+      `Fecha: ${comprobanteEmitido.fecha}`,
+      `Cliente: ${comprobanteEmitido.cliente}`,
+      `Pago: ${comprobanteEmitido.metodoPago}`,
+      '----------------------------',
+      lineasItems,
+      '----------------------------',
+      `Op. Gravada: S/ ${Number(comprobanteEmitido.subtotalNeto).toFixed(2)}`,
+      `I.G.V. (18%): S/ ${Number(comprobanteEmitido.igv).toFixed(2)}`,
+      `*TOTAL PAGADO: S/ ${Number(comprobanteEmitido.total).toFixed(2)}*`,
+      'Gracias por su preferencia.'
+    ].join('\n');
+
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }, [comprobanteEmitido]);
+
+  // =========================================================================
+  // ATAJOS DE TECLADO EN CAJA: F12 (Emitir Boleta), F2 (Buscar) y Esc (Cerrar Recibo)
+  // =========================================================================
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && mostrarReciboCaja) {
+        e.preventDefault();
+        cerrarModalRecibo();
+        return;
+      }
+      if (e.key === 'F12') {
+        e.preventDefault();
+        if (!mostrarReciboCaja && carrito.length > 0 && !procesandoRef.current) {
+          emitirComprobante('ATAJO_F12');
+        }
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        if (searchInputRef.current) searchInputRef.current.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [carrito.length, emitirComprobante, mostrarReciboCaja, cerrarModalRecibo]);
+
+  // =========================================================================
+  // GESTIÓN DE LÍNEAS DEL TICKET
+  // =========================================================================
   const agregarAlCarrito = (producto) => {
     if (producto.stock <= 0) {
-      alert('Producto sin stock disponible.');
+      setAvisoUI({
+        tipo: 'error',
+        texto: `Sin existencias disponibles para "${producto.nombre}".`
+      });
       return;
     }
-    // Si había un comprobante mostrado, al agregar producto iniciamos nueva venta
+
     if (comprobanteEmitido) {
       setComprobanteEmitido(null);
     }
 
-    const existe = carrito.find((item) => item.id_producto === producto.id_producto);
-    if (existe) {
-      if (existe.cantidad >= producto.stock) {
-        alert('No puedes superar el stock disponible.');
+    const existente = carrito.find((item) => item.id_producto === producto.id_producto);
+    if (existente) {
+      if (existente.cantidad >= producto.stock) {
+        setAvisoUI({
+          tipo: 'warn',
+          texto: `Stock máximo alcanzado para "${producto.nombre}" (${producto.stock} und. disponibles).`
+        });
         return;
       }
       setCarrito(
         carrito.map((item) =>
           item.id_producto === producto.id_producto
-            ? { ...item, cantidad: item.cantidad + 1, subtotal: (item.cantidad + 1) * item.precio }
+            ? {
+                ...item,
+                cantidad: item.cantidad + 1,
+                subtotal: Number(((item.cantidad + 1) * item.precio).toFixed(2))
+              }
             : item
         )
       );
@@ -125,525 +447,879 @@ export default function PosPage() {
         {
           id_producto: producto.id_producto,
           nombre: producto.nombre,
-          categoria: producto.categoria || 'Medicamento',
-          precio: producto.precio,
+          categoria: producto.categoria || 'General',
+          precio: Number(producto.precio),
+          stockMax: Number(producto.stock),
           cantidad: 1,
-          subtotal: producto.precio
+          subtotal: Number(producto.precio)
         }
       ]);
     }
   };
 
-  const quitarDelCarrito = (id_producto) => {
-    setCarrito(carrito.filter((item) => item.id_producto !== id_producto));
+  const ajustarCantidad = (id_producto, delta) => {
+    const prodCatalogo = productos.find((p) => p.id_producto === id_producto);
+    const maxStock = prodCatalogo ? prodCatalogo.stock : 999;
+
+    setCarrito((prev) =>
+      prev
+        .map((item) => {
+          if (item.id_producto !== id_producto) return item;
+          const nuevaCant = item.cantidad + delta;
+          if (nuevaCant <= 0) return null;
+          if (nuevaCant > maxStock) {
+            setAvisoUI({
+              tipo: 'warn',
+              texto: `Tope de stock físico alcanzado (${maxStock} und.).`
+            });
+            return item;
+          }
+          return {
+            ...item,
+            cantidad: nuevaCant,
+            subtotal: Number((nuevaCant * item.precio).toFixed(2))
+          };
+        })
+        .filter(Boolean)
+    );
   };
 
   const limpiarVenta = () => {
     setCarrito([]);
     setComprobanteEmitido(null);
+    setMostrarReciboCaja(false);
+    setEsperandoConfirmacionVisor(false);
     setEfectivoRecibido('');
-    setMensajeVenta(null);
-  };
-
-  const emitirComprobante = async () => {
-    if (carrito.length === 0) {
-      alert('El ticket está vacío.');
-      return;
-    }
-    try {
-      const res = await fetch('/api/ventas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cliente: cliente.trim() || 'Público General',
-          items: carrito.map((i) => ({
-            id_producto: i.id_producto,
-            cantidad: i.cantidad,
-            precio_unitario: i.precio
-          }))
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        const comp = {
-          numero: data.comprobante,
-          cliente: cliente.trim() || 'Público General',
-          metodoPago,
-          total,
-          subtotalNeto,
-          igv,
-          fecha: new Date().toLocaleString(),
-          items: carrito.map((i) => ({
-            id_producto: i.id_producto,
-            nombre: i.nombre,
-            categoria: i.categoria,
-            cantidad: i.cantidad,
-            precio: i.precio,
-            subtotal: i.subtotal
-          }))
-        };
-        setComprobanteEmitido(comp);
-        setMensajeVenta(`¡Venta procesada con éxito! Comprobante: ${data.comprobante}`);
-        setCarrito([]);
-        setEfectivoRecibido('');
-
-        // Recargar productos para ver stock actualizado
-        fetch('/api/productos')
-          .then((r) => r.json())
-          .then((p) => setProductos(p));
-      } else {
-        alert(data.message || 'Error al emitir venta.');
-      }
-    } catch (err) {
-      alert('Error de conexión al emitir comprobante.');
-    }
+    setMostrarQrEnCaja(false);
   };
 
   return (
-    <div style={{ maxWidth: '1240px', margin: '24px auto', padding: '0 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+    <section>
+      {/* Cabecera Operativa */}
+      <div className="erp-page-header no-print">
         <div>
-          <h1 style={{ color: '#f8fafc', margin: '0 0 5px 0', fontSize: '1.75rem' }}>🛒 Terminal POS de Farmacia</h1>
-          <p style={{ color: '#94a3b8', margin: 0, fontSize: '14px' }}>
-            Despacho rápido con emisión y sincronización automática hacia la Pantalla de Cliente
+          <div className="erp-eyebrow">
+            <IconReceipt size={14} />
+            <span>Despacho Farmacéutico · Control de Caja</span>
+          </div>
+          <h1 className="erp-page-title">Terminal de Punto de Venta (POS)</h1>
+          <p className="erp-page-subtitle">
+            Descuento automático de stock FEFO y emisión inmediata de boleta electrónica.
           </p>
+        </div>
+
+        <div className="erp-header-controls">
+          {comprobanteEmitido && (
+            <button
+              type="button"
+              onClick={() => setMostrarReciboCaja(true)}
+              className="erp-btn erp-btn-secondary erp-btn-sm"
+            >
+              <IconReceipt size={14} />
+              <span>Ver Recibo {comprobanteEmitido.numero}</span>
+            </button>
+          )}
+          <span className="erp-badge badge-ok erp-mono">
+            <span className="erp-badge-dot" />
+            <span>Catálogo activo · {metricasCatalogo.totalSkus} medicamentos</span>
+          </span>
+          {metricasCatalogo.criticos > 0 && (
+            <span className="erp-badge badge-warn erp-mono">
+              <IconAlert size={13} />
+              <span>{metricasCatalogo.criticos} en stock crítico</span>
+            </span>
+          )}
         </div>
       </div>
 
-      {mensajeVenta && (
-        <div style={{
-          padding: '12px 18px',
-          background: 'rgba(16, 185, 129, 0.15)',
-          border: '1px solid #10b981',
-          color: '#10b981',
-          borderRadius: '10px',
-          marginBottom: '20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)'
-        }}>
+      {/* Notificación No Bloqueante */}
+      {avisoUI && (
+        <div
+          className={`erp-banner no-print ${
+            avisoUI.tipo === 'success'
+              ? 'erp-banner-success'
+              : avisoUI.tipo === 'warn'
+              ? 'erp-banner-warn'
+              : 'erp-banner-error'
+          }`}
+        >
           <div>
-            <strong>✓ Operación confirmada:</strong> {mensajeVenta}
-            <span style={{ display: 'block', fontSize: '12px', color: '#6ee7b7', marginTop: '2px' }}>
-              El comprobante electrónico se está mostrando en vivo en la pantalla del cliente.
-            </span>
+            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px' }}>
+              {avisoUI.tipo === 'success' ? <IconCheck size={16} /> : <IconAlert size={16} />}
+              <span>{avisoUI.texto}</span>
+            </div>
+            {avisoUI.detalle && (
+              <div style={{ fontSize: '0.78rem', opacity: 0.85, marginTop: '3px' }}>
+                {avisoUI.detalle}
+              </div>
+            )}
           </div>
           <button
-            onClick={() => setMensajeVenta(null)}
-            style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontWeight: 'bold', fontSize: '18px' }}
+            type="button"
+            className="erp-banner-close"
+            onClick={() => setAvisoUI(null)}
+            aria-label="Cerrar notificación"
           >
-            ✕
+            <IconClose size={16} />
           </button>
         </div>
       )}
 
-      {cargando && <p style={{ color: '#94a3b8' }}>Cargando catálogo desde MySQL (Express)...</p>}
-      {error && <p style={{ color: '#f87171' }}>Error: {error}</p>}
+      {error && (
+        <div className="erp-banner erp-banner-error no-print">
+          <span>Error de conexión con MySQL/Express: {error}</span>
+        </div>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: '24px' }}>
-        {/* Catálogo de Productos con Miniaturas */}
+      <div className="pos-workspace-grid no-print">
+        {/* COLUMNA IZQUIERDA: Buscador + Categorías + Cuadrícula de Fármacos */}
         <div>
-          <h3 style={{ color: '#cbd5e1', marginBottom: '14px', fontSize: '1rem', letterSpacing: '0.04em' }}>
-            Catálogo de Medicamentos Disponibles
-          </h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
-            gap: '14px'
-          }}>
-            {productos.map((prod) => {
-              const imgProd = getProductImage(prod.nombre);
-              return (
-                <div
-                  key={prod.id_producto}
-                  style={{
-                    background: '#1e293b',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    border: prod.en_alerta ? '1.5px solid #f59e0b' : '1px solid #334155',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{
-                        fontSize: '10px',
-                        fontWeight: '700',
-                        padding: '2px 8px',
-                        borderRadius: '10px',
-                        background: '#0f172a',
-                        color: '#94a3b8',
-                        textTransform: 'uppercase'
-                      }}>
-                        {prod.categoria}
-                      </span>
-                      {prod.en_alerta && (
-                        <span style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 'bold' }}>⚠️ Stock Crítico</span>
+          <div className="erp-toolbar">
+            <div className="erp-search-box" style={{ maxWidth: '100%' }}>
+              <span className="erp-search-icon">
+                <IconSearch size={16} />
+              </span>
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar medicamento, principio activo, lote o anaquel (Atajo F2)..."
+                className="erp-input with-icon"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+
+          <div className="erp-filter-group" style={{ marginBottom: '16px' }}>
+            {categoriasDisponibles.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategoriaActiva(cat)}
+                className={`erp-filter-pill ${categoriaActiva === cat ? 'active' : ''}`}
+              >
+                {cat === 'TODAS' ? 'Todas las áreas' : cat}
+              </button>
+            ))}
+          </div>
+
+          {cargando ? (
+            <div className="erp-panel" style={{ padding: '42px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Sincronizando catálogo farmacéutico desde MySQL...
+            </div>
+          ) : productosFiltrados.length === 0 ? (
+            <div className="erp-panel" style={{ padding: '42px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Ningún medicamento coincide con el criterio de filtrado actual.
+            </div>
+          ) : (
+            <div className="pos-products-grid">
+              {productosFiltrados.map((prod) => {
+                const imgProd = getProductImage(prod.nombre, prod.id_producto);
+                const itemEnTicket = carrito.find((c) => c.id_producto === prod.id_producto);
+                const stockNum = Number(prod.stock) || 0;
+                const agotado = stockNum <= 0;
+                const esRojo = stockNum <= 15;
+                const esAmarillo = stockNum >= 16 && stockNum <= 30;
+                const colorStock = esRojo
+                  ? 'var(--crimson-400)'
+                  : esAmarillo
+                  ? 'var(--amber-400)'
+                  : 'var(--emerald-400)';
+                const claseSemaforo = esRojo ? ' is-danger' : esAmarillo ? ' is-critical' : ' is-optimal';
+
+                return (
+                  <article
+                    key={prod.id_producto}
+                    className={`pos-product-card${claseSemaforo}${itemEnTicket ? ' in-cart' : ''}`}
+                  >
+                    <div>
+                      <div className="pos-card-top">
+                        <span className="pos-category-tag">{prod.categoria}</span>
+                        <span
+                          className={`erp-badge ${
+                            esRojo ? 'badge-danger' : esAmarillo ? 'badge-warn' : 'badge-ok'
+                          }`}
+                        >
+                          <span className="erp-badge-dot" />
+                          <span>{esRojo ? 'Crítico' : esAmarillo ? 'Medio' : 'Óptimo'}</span>
+                        </span>
+                      </div>
+
+                      <div className="pos-thumb-stage" style={{ marginTop: '8px', marginBottom: '10px' }}>
+                        <img
+                          src={imgProd}
+                          alt={prod.nombre}
+                          width="76"
+                          height="76"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.src = '/favicon.svg';
+                          }}
+                        />
+                        {itemEnTicket && (
+                          <span className="pos-cart-qty-pill">{itemEnTicket.cantidad} en ticket</span>
+                        )}
+                      </div>
+
+                      <h3 className="pos-prod-title" title={prod.nombre}>
+                        {prod.nombre}
+                      </h3>
+
+                      <div className="pos-price-row" style={{ marginTop: '6px', marginBottom: '6px' }}>
+                        <span className="pos-price-val">S/ {Number(prod.precio).toFixed(2)}</span>
+                        <span className="pos-lot-code">{prod.lote}</span>
+                      </div>
+
+                      {/* Stock Actual con Semáforo (<=15 Rojo | 16-30 Amarillo | >30 Verde) */}
+                      <div className="pos-stock-metrics">
+                        <span>
+                          Stock:{' '}
+                          <strong style={{ color: colorStock }}>
+                            {prod.stock} und.
+                          </strong>
+                        </span>
+                        <span>Mín: {prod.stock_minimo} und.</span>
+                      </div>
+
+                      {esRojo && (
+                        <div
+                          className="erp-mono"
+                          style={{
+                            marginTop: '5px',
+                            fontSize: '0.68rem',
+                            color: 'var(--crimson-400)'
+                          }}
+                        >
+                          Reponer sugerido: +{Math.max(35 - stockNum, 15)} und.
+                        </div>
+                      )}
+
+                      {prod.ubicacion && (
+                        <div className="pos-shelf-tag" style={{ marginTop: '7px' }} title={prod.ubicacion}>
+                          <IconLocation size={13} />
+                          <span>{prod.ubicacion}</span>
+                        </div>
                       )}
                     </div>
 
-                    {/* Foto WebP del Medicamento */}
-                    <div style={{
-                      width: '100%',
-                      height: '80px',
-                      background: '#0f172a',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '10px',
-                      padding: '6px'
-                    }}>
-                      <img
-                        src={imgProd}
-                        alt={prod.nombre}
-                        style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
-                        onError={(e) => { e.currentTarget.src = '/favicon.svg'; }}
-                      />
-                    </div>
-
-                    <h4 style={{ color: '#f8fafc', margin: '0 0 4px 0', fontSize: '14px', lineHeight: 1.3 }}>{prod.nombre}</h4>
-                    <div style={{ fontSize: '17px', fontWeight: 'bold', color: '#10b981', margin: '4px 0' }}>
-                      S/ {Number(prod.precio).toFixed(2)}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8' }}>
-                      <span>Stock: <strong style={{ color: prod.en_alerta ? '#f59e0b' : '#f8fafc' }}>{prod.stock} und.</strong></span>
-                      <span style={{ color: '#64748b' }}>Mín: {prod.stock_minimo} und.</span>
-                    </div>
-                    {prod.ubicacion && (
-                      <div style={{ fontSize: '10.5px', color: '#38bdf8', marginTop: '5px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span>📍</span>
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={prod.ubicacion}>
-                          {prod.ubicacion}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => agregarAlCarrito(prod)}
-                    disabled={prod.stock <= 0}
-                    style={{
-                      marginTop: '12px',
-                      padding: '8px 12px',
-                      backgroundColor: prod.stock > 0 ? '#10b981' : '#475569',
-                      color: '#0f172a',
-                      fontWeight: 'bold',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: prod.stock > 0 ? 'pointer' : 'not-allowed',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    {prod.stock > 0 ? '+ Agregar al Ticket' : 'Agotado'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                    <button
+                      type="button"
+                      onClick={() => agregarAlCarrito(prod)}
+                      disabled={agotado}
+                      className={`erp-btn ${agotado ? 'erp-btn-secondary' : 'erp-btn-primary'}`}
+                      style={{ width: '100%', minHeight: '38px' }}
+                    >
+                      {agotado ? (
+                        <span>Sin Existencias</span>
+                      ) : (
+                        <>
+                          <IconPlus size={15} />
+                          <span>Agregar al Ticket</span>
+                        </>
+                      )}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Panel Lateral: Ticket POS + Sincronización en Vivo */}
-        <div style={{
-          background: '#1e293b',
-          borderRadius: '16px',
-          padding: '20px',
-          border: '1px solid #334155',
-          height: 'fit-content',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.25)'
-        }}>
-          {/* Cabecera del Ticket */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '12px' }}>
-            <h3 style={{ color: '#f8fafc', margin: 0, fontSize: '1.1rem' }}>
-              🧾 Ticket de Despacho
-            </h3>
+        {/* COLUMNA DERECHA: Ticket de Venta Claro y Estructurado */}
+        <aside className="pos-ticket-panel">
+          {/* Encabezado del Ticket */}
+          <div className="pos-ticket-header">
+            <h2 className="pos-ticket-title">
+              <IconReceipt size={17} />
+              <span>Ticket de Venta</span>
+              <span
+                className={`erp-badge erp-mono ${
+                  metricasCatalogo.unidadesTicket > 0 ? 'badge-ok' : 'badge-neutral'
+                }`}
+              >
+                {metricasCatalogo.unidadesTicket > 0
+                  ? `${metricasCatalogo.unidadesTicket} und.`
+                  : '0 ítems'}
+              </span>
+            </h2>
+
             {carrito.length > 0 && (
               <button
                 type="button"
                 onClick={limpiarVenta}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '12px', cursor: 'pointer' }}
-                title="Vaciar ticket"
+                className="erp-btn erp-btn-secondary erp-btn-sm"
               >
-                ✕ Limpiar
+                <IconClose size={13} />
+                <span>Vaciar</span>
               </button>
             )}
           </div>
 
-          {/* Campo de Cliente */}
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginBottom: '4px', fontWeight: 600 }}>
-              Cliente / Paciente:
-            </label>
-            <input
-              type="text"
-              value={cliente}
-              onChange={(e) => setCliente(e.target.value)}
-              placeholder="Público General o DNI..."
-              style={{
-                width: '100%',
-                background: '#0f172a',
-                border: '1px solid #334155',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                color: '#f8fafc',
-                fontSize: '13px',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-
-          {/* Lista de Medicamentos en el Ticket */}
-          {carrito.length === 0 ? (
-            <div style={{
-              padding: '30px 16px',
-              textAlign: 'center',
-              border: '1px dashed #334155',
-              borderRadius: '10px',
-              color: '#94a3b8',
-              fontSize: '13px'
-            }}>
-              <span style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}>🛒</span>
-              Ningún medicamento agregado.
-              <span style={{ display: 'block', fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                La pantalla del cliente se encuentra en modo <strong>IDLE (Espera)</strong>.
+          {/* PASO 1: Tipo de Cliente (Sin borrar texto manualmente - PLAN.md 2.B) */}
+          <div className="pos-step-block">
+            <div className="pos-step-label-row">
+              <span className="pos-step-label">1. Datos del Cliente</span>
+              <span className="pos-step-hint">
+                {modoCliente === 'GENERAL' ? 'Boleta rápida' : 'Boleta identificada'}
               </span>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
-              {carrito.map((item) => (
-                <div
-                  key={item.id_producto}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: '13px',
-                    color: '#e2e8f0',
-                    background: '#0f172a',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #334155'
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
-                    <div style={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.nombre}
-                    </div>
-                    <small style={{ color: '#94a3b8' }}>
-                      {item.cantidad} x S/ {item.precio.toFixed(2)}
-                    </small>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    <span style={{ fontWeight: 'bold', color: '#10b981' }}>S/ {item.subtotal.toFixed(2)}</span>
-                    <button
-                      onClick={() => quitarDelCarrito(item.id_producto)}
-                      style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '13px' }}
-                    >
-                      ✕
-                    </button>
-                  </div>
+
+            <div className="pos-client-switch" role="tablist" aria-label="Tipo de cliente">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={modoCliente === 'GENERAL'}
+                onClick={() => setModoCliente('GENERAL')}
+                className={`pos-client-tab ${modoCliente === 'GENERAL' ? 'active' : ''}`}
+              >
+                Público General
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={modoCliente === 'DOCUMENTO'}
+                onClick={() => {
+                  setModoCliente('DOCUMENTO');
+                  setTimeout(() => {
+                    if (dniInputRef.current) dniInputRef.current.focus();
+                  }, 20);
+                }}
+                className={`pos-client-tab ${modoCliente === 'DOCUMENTO' ? 'active' : ''}`}
+              >
+                Con DNI / Paciente
+              </button>
+            </div>
+
+            {modoCliente === 'DOCUMENTO' && (
+              <div className="pos-dni-input-wrap">
+                <input
+                  ref={dniInputRef}
+                  id="pos-cliente-input"
+                  type="text"
+                  value={clienteDoc}
+                  onChange={(e) => setClienteDoc(e.target.value)}
+                  placeholder="Ingrese DNI, RUC o nombre del paciente..."
+                  className="erp-input"
+                  maxLength={100}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                />
+                {clienteDoc && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClienteDoc('');
+                      if (dniInputRef.current) dniInputRef.current.focus();
+                    }}
+                    className="pos-dni-clear"
+                    aria-label="Limpiar documento"
+                  >
+                    <IconClose size={13} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* PASO 2: Productos Agregados */}
+          <div className="pos-step-block">
+            <div className="pos-step-label-row">
+              <span className="pos-step-label">2. Productos en Ticket</span>
+              {carrito.length > 0 && (
+                <span className="pos-step-hint">{carrito.length} líneas</span>
+              )}
+            </div>
+
+            {carrito.length === 0 ? (
+              <div className="pos-empty-state">
+                <div className="pos-empty-title">Aún no hay productos agregados</div>
+                <div className="pos-empty-sub">
+                  Haz clic en <strong>Agregar al Ticket</strong> en cualquier medicamento de la izquierda.
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="pos-cart-list">
+                {carrito.map((item) => (
+                  <div key={item.id_producto} className="pos-cart-row">
+                    <div className="pos-cart-info">
+                      <div className="pos-cart-name" title={item.nombre}>
+                        {item.nombre}
+                      </div>
+                      <div className="pos-cart-unit">S/ {item.precio.toFixed(2)} c/u</div>
+                    </div>
 
-          {/* Desglose de Totales */}
-          {carrito.length > 0 && (
-            <div style={{ background: '#0f172a', padding: '12px', borderRadius: '10px', border: '1px solid #334155' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#94a3b8', marginBottom: '4px' }}>
-                <span>Op. Gravada:</span>
-                <span>S/ {subtotalNeto.toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>
-                <span>I.G.V. (18%):</span>
-                <span>S/ {igv.toFixed(2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px', fontWeight: 'bold', color: '#ffffff', borderTop: '1px solid #334155', paddingTop: '6px' }}>
-                <span>Total a Cobrar:</span>
-                <span style={{ color: '#10b981' }}>S/ {total.toFixed(2)}</span>
-              </div>
-            </div>
-          )}
+                    <div className="pos-stepper">
+                      <button
+                        type="button"
+                        className="pos-step-btn"
+                        onClick={() => ajustarCantidad(item.id_producto, -1)}
+                        aria-label="Disminuir cantidad"
+                      >
+                        <IconMinus size={13} />
+                      </button>
+                      <span className="pos-step-qty">{item.cantidad}</span>
+                      <button
+                        type="button"
+                        className="pos-step-btn"
+                        onClick={() => ajustarCantidad(item.id_producto, 1)}
+                        aria-label="Aumentar cantidad"
+                      >
+                        <IconPlus size={13} />
+                      </button>
+                    </div>
 
-          {/* Selector de Método de Pago (Controla el Estado 3 en el Celular) */}
-          {carrito.length > 0 && (
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#cbd5e1', fontWeight: 700, marginBottom: '6px' }}>
-                Método de Pago del Cliente:
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-                <button
-                  type="button"
-                  onClick={() => setMetodoPago('Efectivo')}
-                  style={{
-                    padding: '8px 4px',
-                    borderRadius: '8px',
-                    border: metodoPago === 'Efectivo' ? '1.5px solid #10b981' : '1px solid #334155',
-                    background: metodoPago === 'Efectivo' ? 'rgba(16, 185, 129, 0.2)' : '#0f172a',
-                    color: metodoPago === 'Efectivo' ? '#10b981' : '#cbd5e1',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  💵 Efectivo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMetodoPago('Yape / Plin')}
-                  style={{
-                    padding: '8px 4px',
-                    borderRadius: '8px',
-                    border: metodoPago === 'Yape / Plin' ? '1.5px solid #a855f7' : '1px solid #334155',
-                    background: metodoPago === 'Yape / Plin' ? 'rgba(168, 85, 247, 0.2)' : '#0f172a',
-                    color: metodoPago === 'Yape / Plin' ? '#d8b4fe' : '#cbd5e1',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  💜 Yape / Plin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMetodoPago('Tarjeta')}
-                  style={{
-                    padding: '8px 4px',
-                    borderRadius: '8px',
-                    border: metodoPago === 'Tarjeta' ? '1.5px solid #38bdf8' : '1px solid #334155',
-                    background: metodoPago === 'Tarjeta' ? 'rgba(56, 189, 248, 0.2)' : '#0f172a',
-                    color: metodoPago === 'Tarjeta' ? '#38bdf8' : '#cbd5e1',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  💳 Tarjeta
-                </button>
-              </div>
-
-              {/* Controles Específicos para Efectivo */}
-              {metodoPago === 'Efectivo' && (
-                <div style={{ marginTop: '10px', background: '#0f172a', padding: '10px', borderRadius: '8px', border: '1px solid #334155' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>Efectivo entregado por cliente:</span>
-                    <input
-                      type="number"
-                      placeholder={`S/ ${total.toFixed(2)}`}
-                      value={efectivoRecibido}
-                      onChange={(e) => setEfectivoRecibido(e.target.value)}
+                    <span
+                      className="erp-mono"
                       style={{
-                        width: '90px',
-                        padding: '4px 8px',
-                        background: '#1e293b',
-                        border: '1px solid #334155',
-                        borderRadius: '6px',
-                        color: '#f8fafc',
-                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: 'var(--emerald-400)',
+                        minWidth: '68px',
                         textAlign: 'right'
                       }}
-                    />
-                  </div>
-
-                  {/* Botones rápidos de billetes */}
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                    {[10, 20, 50, 100].map((billete) => (
-                      <button
-                        key={billete}
-                        type="button"
-                        onClick={() => setEfectivoRecibido(String(billete))}
-                        style={{
-                          flex: 1,
-                          padding: '3px 6px',
-                          background: '#1e293b',
-                          border: '1px solid #334155',
-                          borderRadius: '4px',
-                          color: '#cbd5e1',
-                          fontSize: '11px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        S/ {billete}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setEfectivoRecibido(String(total))}
-                      style={{
-                        flex: 1,
-                        padding: '3px 6px',
-                        background: 'rgba(16, 185, 129, 0.2)',
-                        border: '1px solid #10b981',
-                        borderRadius: '4px',
-                        color: '#10b981',
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                      }}
                     >
-                      Exacto
+                      S/ {item.subtotal.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* PASO 3: Medio de Pago (3 Canales Unificados: Efectivo | Yape / Plin | Tarjeta) */}
+          <div className="pos-step-block">
+            <div className="pos-step-label-row">
+              <span className="pos-step-label">3. Medio de Pago</span>
+              <span className="pos-step-hint">{metodoPago}</span>
+            </div>
+
+            <div className="pos-pay-methods">
+              <button
+                type="button"
+                onClick={() => {
+                  setMetodoPago('Efectivo');
+                  setMostrarQrEnCaja(false);
+                  setEsperandoConfirmacionVisor(false);
+                }}
+                className={`pos-pay-btn ${metodoPago === 'Efectivo' ? 'active' : ''}`}
+              >
+                <IconCash size={16} />
+                <span>Efectivo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMetodoPago('Yape / Plin')}
+                className={`pos-pay-btn ${metodoPago === 'Yape / Plin' ? 'active' : ''}`}
+              >
+                <IconQr size={16} />
+                <span>Yape / Plin</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMetodoPago('Tarjeta');
+                  setMostrarQrEnCaja(false);
+                }}
+                className={`pos-pay-btn ${metodoPago === 'Tarjeta' ? 'active' : ''}`}
+              >
+                <IconCard size={16} />
+                <span>Tarjeta</span>
+              </button>
+            </div>
+
+            {/* Calculadora de Vuelto en Efectivo */}
+            {carrito.length > 0 && metodoPago === 'Efectivo' && (
+              <div className="pos-cash-drawer">
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px'
+                  }}
+                >
+                  <label
+                    htmlFor="pos-efectivo-input"
+                    style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}
+                  >
+                    Paga con (S/):
+                  </label>
+                  <input
+                    id="pos-efectivo-input"
+                    type="number"
+                    min="0"
+                    step="0.10"
+                    placeholder={total.toFixed(2)}
+                    value={efectivoRecibido}
+                    onChange={(e) => setEfectivoRecibido(e.target.value)}
+                    className="erp-input erp-mono"
+                    style={{
+                      width: '112px',
+                      minHeight: '34px',
+                      textAlign: 'right',
+                      padding: '4px 10px'
+                    }}
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div className="pos-bills-row">
+                  {[10, 20, 50, 100].map((billete) => (
+                    <button
+                      key={billete}
+                      type="button"
+                      onClick={() => setEfectivoRecibido(String(billete))}
+                      className="pos-bill-chip"
+                    >
+                      S/ {billete}
                     </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setEfectivoRecibido(total.toFixed(2))}
+                    className="pos-bill-chip"
+                    style={{ color: 'var(--emerald-400)', borderColor: 'var(--border-emerald)' }}
+                  >
+                    Exacto
+                  </button>
+                </div>
+
+                {numEfectivo > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      paddingTop: '6px',
+                      borderTop: '1px dashed var(--border-subtle)',
+                      fontSize: '0.81rem',
+                      fontWeight: 700,
+                      color: numEfectivo >= total ? 'var(--emerald-400)' : 'var(--amber-400)'
+                    }}
+                  >
+                    <span>{numEfectivo >= total ? 'Vuelto a entregar:' : 'Falta cubrir:'}</span>
+                    <span className="erp-mono">
+                      S/ {numEfectivo >= total ? vuelto.toFixed(2) : (total - numEfectivo).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Panel Rápido QR Yape / Plin en Caja + Sincronización con Visor */}
+            {metodoPago === 'Yape / Plin' && (
+              <div className="pos-qr-inline-box">
+                <div className="pos-qr-inline-top">
+                  <span className="pos-qr-inline-text">
+                    QR <strong>Yape / Plin</strong>{' '}
+                    {carrito.length > 0 ? `listo por S/ ${total.toFixed(2)}` : 'interoperable listo'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarQrEnCaja((prev) => !prev)}
+                    className="pos-qr-toggle-btn"
+                  >
+                    <IconEye size={13} />
+                    <span>{mostrarQrEnCaja ? 'Ocultar QR' : 'Ver QR aquí'}</span>
+                  </button>
+                </div>
+
+                {mostrarQrEnCaja && (
+                  <div className="pos-qr-inline-preview">
+                    <PaymentQrBox metodo={metodoPago} size={168} allowSwitch showDemoHint />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {carrito.length > 0 && metodoPago === 'Tarjeta' && (
+              <div className="pos-visor-sync-notice">
+                Cobro con POS inalámbrico o lectura sin contacto por{' '}
+                <strong className="erp-mono">S/ {total.toFixed(2)}</strong>.
+              </div>
+            )}
+          </div>
+
+          {/* PASO 4: Resumen Tributario Permanente */}
+          <div className="pos-totals-box">
+            <div className="pos-tax-line">
+              <span>Op. Gravada (Sin IGV)</span>
+              <span className="erp-mono">S/ {subtotalNeto.toFixed(2)}</span>
+            </div>
+            <div className="pos-tax-line">
+              <span>I.G.V. (18%)</span>
+              <span className="erp-mono">S/ {igv.toFixed(2)}</span>
+            </div>
+            <div className="pos-grand-line">
+              <span>Total a Cobrar</span>
+              <span
+                className={`pos-grand-amount ${carrito.length === 0 ? 'is-zero' : ''}`}
+              >
+                S/ {total.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          {/* PASO 5: Jerarquía Clara de Cobro (1 Botón Principal + 1 Opción Secundaria de Visor - PLAN.md 2.C) */}
+          <div className="pos-checkout-stack">
+            <button
+              type="button"
+              onClick={() => emitirComprobante('DIRECTO')}
+              disabled={carrito.length === 0 || procesandoVenta}
+              className="erp-btn erp-btn-primary pos-main-pay-btn"
+            >
+              <IconBolt size={16} />
+              <span>
+                {procesandoVenta
+                  ? 'Emitiendo Boleta...'
+                  : carrito.length > 0
+                  ? `Cobrar S/ ${total.toFixed(2)} · Emitir Boleta`
+                  : 'Cobrar y Emitir Boleta'}
+              </span>
+              <kbd className="erp-kbd">F12</kbd>
+            </button>
+
+            {esperandoConfirmacionVisor ? (
+              <div className="pos-visor-waiting-bar">
+                <div className="pos-visor-waiting-info">
+                  <span className="pos-visor-pulse" />
+                  <span>Esperando confirmación en Pantalla del Cliente...</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEsperandoConfirmacionVisor(false)}
+                  className="pos-visor-cancel-btn"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={iniciarCobroEnVisor}
+                disabled={carrito.length === 0 || procesandoVenta}
+                className="pos-secondary-visor-btn"
+                title="Envía el QR o monto a la Pantalla del Cliente para que confirme el pago desde su celular"
+              >
+                <IconMonitor size={14} />
+                <span>Enviar cobro a Pantalla del Cliente</span>
+              </button>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {/* MODAL DE RECIBO / BOLETA ELECTRÓNICA EN CAJA (SUNAT) */}
+      {mostrarReciboCaja && comprobanteEmitido && (
+        <div
+          className="erp-modal-backdrop pos-receipt-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pos-receipt-modal-title"
+          onClick={cerrarModalRecibo}
+        >
+          <div
+            className="pos-receipt-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera de confirmación (oculta al imprimir) */}
+            <div className="pos-receipt-top-status no-print">
+              <div className="pos-receipt-status-left">
+                <span className="pos-receipt-check-badge">
+                  <IconCheck size={15} />
+                </span>
+                <div>
+                  <div id="pos-receipt-modal-title" className="pos-receipt-status-title">
+                    Boleta Emitida · {comprobanteEmitido.numero}
+                  </div>
+                  <div className="pos-receipt-status-sub">
+                    Registrada en MySQL y proyectada en Pantalla del Cliente
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={cerrarModalRecibo}
+                className="erp-banner-close"
+                aria-label="Cerrar recibo (Esc)"
+                title="Cerrar recibo (Esc)"
+              >
+                <IconClose size={17} />
+              </button>
+            </div>
+
+            {/* Papel Térmico Clínico SUNAT (se imprime 1:1 en blanco y negro limpio) */}
+            <div className="pos-receipt-scroll">
+              <div className="pos-thermal-paper">
+                <div className="pos-thermal-header">
+                  <div className="pos-thermal-company">BOTICA NOVA S.A.C.</div>
+                  <div className="pos-thermal-ruc">R.U.C. 20608493021</div>
+                  <div className="pos-thermal-address">Av. Javier Prado Este 2480 · San Borja, Lima</div>
+
+                  <div className="pos-thermal-doc-box">
+                    <div className="pos-thermal-doc-type">BOLETA DE VENTA ELECTRÓNICA</div>
+                    <div className="pos-thermal-doc-num">{comprobanteEmitido.numero}</div>
+                  </div>
+                </div>
+
+                <div className="pos-thermal-divider" />
+
+                <div className="pos-thermal-meta">
+                  <div className="pos-thermal-meta-row">
+                    <span>Fecha y hora:</span>
+                    <strong>{comprobanteEmitido.fecha}</strong>
+                  </div>
+                  <div className="pos-thermal-meta-row">
+                    <span>Paciente / Cliente:</span>
+                    <strong>{comprobanteEmitido.cliente}</strong>
+                  </div>
+                  <div className="pos-thermal-meta-row">
+                    <span>Atendido por:</span>
+                    <strong>{comprobanteEmitido.vendedor}</strong>
+                  </div>
+                  <div className="pos-thermal-meta-row">
+                    <span>Modalidad de pago:</span>
+                    <strong>{comprobanteEmitido.metodoPago}</strong>
+                  </div>
+                </div>
+
+                <div className="pos-thermal-divider" />
+
+                <table className="pos-thermal-table">
+                  <thead>
+                    <tr>
+                      <th className="th-cant">Cant.</th>
+                      <th className="th-desc">Descripción</th>
+                      <th className="th-imp">Importe</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(comprobanteEmitido.items || []).map((it, idx) => (
+                      <tr key={it.id_producto || idx}>
+                        <td className="td-cant">{it.cantidad}</td>
+                        <td className="td-desc">
+                          <span className="td-prod-name">{it.nombre}</span>
+                          <span className="td-prod-unit">
+                            S/ {Number(it.precio || 0).toFixed(2)} c/u
+                          </span>
+                        </td>
+                        <td className="td-imp">S/ {Number(it.subtotal || 0).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="pos-thermal-divider" />
+
+                <div className="pos-thermal-totals">
+                  <div className="pos-thermal-tax-row">
+                    <span>Op. Gravada:</span>
+                    <span>S/ {Number(comprobanteEmitido.subtotalNeto).toFixed(2)}</span>
+                  </div>
+                  <div className="pos-thermal-tax-row">
+                    <span>I.G.V. (18%):</span>
+                    <span>S/ {Number(comprobanteEmitido.igv).toFixed(2)}</span>
+                  </div>
+                  <div className="pos-thermal-grand-row">
+                    <span>TOTAL PAGADO:</span>
+                    <strong>S/ {Number(comprobanteEmitido.total).toFixed(2)}</strong>
                   </div>
 
-                  {/* Vuelto calculado en vivo */}
-                  {numEfectivo > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 'bold', color: '#10b981', borderTop: '1px dashed #334155', paddingTop: '6px' }}>
-                      <span>Vuelto a entregar:</span>
-                      <span>S/ {vuelto.toFixed(2)}</span>
-                    </div>
-                  )}
+                  {comprobanteEmitido.efectivoRecibido !== null &&
+                    comprobanteEmitido.efectivoRecibido !== undefined && (
+                      <>
+                        <div className="pos-thermal-tax-row" style={{ marginTop: '4px' }}>
+                          <span>Efectivo recibido:</span>
+                          <span>S/ {Number(comprobanteEmitido.efectivoRecibido).toFixed(2)}</span>
+                        </div>
+                        {comprobanteEmitido.vuelto !== null &&
+                          comprobanteEmitido.vuelto !== undefined && (
+                            <div className="pos-thermal-tax-row">
+                              <span>Vuelto entregado:</span>
+                              <strong>S/ {Number(comprobanteEmitido.vuelto).toFixed(2)}</strong>
+                            </div>
+                          )}
+                      </>
+                    )}
                 </div>
-              )}
 
-              {/* Mensaje Informativo para Yape / Plin */}
-              {metodoPago === 'Yape / Plin' && (
-                <div style={{ marginTop: '8px', padding: '8px 12px', background: 'rgba(168, 85, 247, 0.15)', border: '1px solid #a855f7', borderRadius: '8px', fontSize: '11px', color: '#e9d5ff' }}>
-                  📱 <strong>Visor de Cliente:</strong> Se está mostrando el código QR de Yape/Plin por <strong>S/ {total.toFixed(2)}</strong> con escaneo láser activo.
-                </div>
-              )}
+                <div className="pos-thermal-divider" />
 
-              {/* Mensaje Informativo para Tarjeta */}
-              {metodoPago === 'Tarjeta' && (
-                <div style={{ marginTop: '8px', padding: '8px 12px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid #38bdf8', borderRadius: '8px', fontSize: '11px', color: '#bae6fd' }}>
-                  💳 <strong>Visor de Cliente:</strong> Se está mostrando el radar contactless NFC por <strong>S/ {total.toFixed(2)}</strong>.
+                <div className="pos-thermal-qr-row">
+                  <div className="pos-thermal-qr-box" aria-hidden="true">
+                    <svg viewBox="0 0 100 100" width="66" height="66">
+                      <rect width="100" height="100" fill="#ffffff" />
+                      <rect x="8" y="8" width="26" height="26" fill="#0f172a" />
+                      <rect x="12" y="12" width="18" height="18" fill="#ffffff" />
+                      <rect x="16" y="16" width="10" height="10" fill="#0f172a" />
+
+                      <rect x="66" y="8" width="26" height="26" fill="#0f172a" />
+                      <rect x="70" y="12" width="18" height="18" fill="#ffffff" />
+                      <rect x="74" y="16" width="10" height="10" fill="#0f172a" />
+
+                      <rect x="8" y="66" width="26" height="26" fill="#0f172a" />
+                      <rect x="12" y="70" width="18" height="18" fill="#ffffff" />
+                      <rect x="16" y="74" width="10" height="10" fill="#0f172a" />
+
+                      <rect x="42" y="12" width="14" height="14" fill="#0f172a" />
+                      <rect x="12" y="42" width="14" height="14" fill="#0f172a" />
+                      <rect x="42" y="42" width="16" height="16" fill="#0f172a" />
+                      <rect x="66" y="42" width="10" height="16" fill="#0f172a" />
+                      <rect x="42" y="66" width="14" height="26" fill="#0f172a" />
+                      <rect x="66" y="66" width="26" height="26" fill="#0f172a" />
+                    </svg>
+                  </div>
+                  <div className="pos-thermal-legal">
+                    Representación impresa de la Boleta de Venta Electrónica autorizada por SUNAT.
+                    Consulte su validez en <strong>www.sunat.gob.pe</strong>
+                  </div>
                 </div>
-              )}
+
+                <div className="pos-thermal-thanks">
+                  Gracias por confiar el cuidado de su salud a Botica Nova
+                </div>
+              </div>
             </div>
-          )}
 
-          {/* Botón de Emisión de Comprobante */}
-          <button
-            onClick={emitirComprobante}
-            disabled={carrito.length === 0}
-            style={{
-              width: '100%',
-              padding: '12px',
-              backgroundColor: carrito.length > 0 ? '#10b981' : '#334155',
-              color: carrito.length > 0 ? '#0f172a' : '#64748b',
-              fontWeight: 'bold',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: carrito.length > 0 ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              boxShadow: carrito.length > 0 ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          >
-            Emitir Boleta Electrónica (F12)
-          </button>
+            {/* Acciones rápidas del cajero (ocultas al imprimir) */}
+            <div className="pos-receipt-actions no-print">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="erp-btn erp-btn-secondary"
+              >
+                <IconPrinter size={15} />
+                <span>Imprimir / PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={compartirReciboWhatsApp}
+                className="erp-btn erp-btn-secondary"
+              >
+                <IconShare size={15} />
+                <span>WhatsApp</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={cerrarModalRecibo}
+                className="erp-btn erp-btn-primary pos-receipt-done-btn"
+              >
+                <IconCheck size={15} />
+                <span>Listo · Nueva Venta</span>
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </section>
   );
 }

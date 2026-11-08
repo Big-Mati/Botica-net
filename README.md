@@ -7,9 +7,9 @@
 
 **BoticaNet+ Nova** es una plataforma integral de gestión farmacéutica desarrollada para la botica **"Botica Nova"**. Resuelve de forma definitiva los problemas de desabastecimiento, quiebres de stock y demoras en caja mediante una arquitectura desacoplada y moderna:
 
-* **Backend:** API REST en **Node.js + Express** con transacciones atómicas seguras en **MySQL** (`mysql2/promise`) y sincronización ultraligera en memoria RAM para dispositivos móviles.
-* **Frontend:** Aplicación de alto rendimiento en **React 19 + Vite** (`client/`), con aceleración gráfica por GPU, diseño responsivo, feedback háptico/sonoro con **Web Audio API** y estética visual clínica de alta gama.
-* **Customer-Facing Display (CFD):** Visor de cliente *Mobile-First* sincronizado en tiempo real con el Terminal POS para correr en el smartphone del profesor o en ventana simulada.
+* **Backend:** API REST en **Node.js + Express** con transacciones atómicas seguras en **MySQL** (`mysql2/promise`), soporte nativo para despliegue en la nube (`process.env.DB_*`, `CORS_ORIGIN`) y sincronización ultraligera en memoria RAM para dispositivos móviles.
+* **Frontend:** Aplicación de alto rendimiento en **React 19 + Vite** (`client/`), con aceleración gráfica por GPU, semáforo clínico de inventario en 3 niveles (`<= 15` crítico, `16–30` medio, `> 30` óptimo), emisión inmediata de Boleta Electrónica SUNAT en caja y estética visual clínica de alta gama.
+* **Customer-Facing Display (CFD):** Visor de cliente *Mobile-First* sincronizado en tiempo real con el Terminal POS para correr en el smartphone del profesor o en ventana simulada, con soporte para códigos QR reales (`yape.jpeg` y `plin.jpeg`) y generador QR de conexión 100% offline.
 
 ---
 
@@ -59,17 +59,17 @@ Diseñada bajo estándares de concurso (Combinación 1A + 2A + 3A + 4A + 5A) par
    - Miniaturas nítidas WebP (`/productos/*.webp`), píldora `x{cant} und.`, precio y subtotal.
    - Banner dinámico cuando se recibe efectivo: `Efectivo entregado: S/ ...` ➔ **`Su vuelto: S/ ...`**.
    - Dock inferior fijo con desenfoque de cristal (`backdrop-filter: blur(20px)`), desglose de Op. Gravada, IGV 18% y **Total a pagar** en tipografía monumental `2.15rem`.
-3. **💜 Estado 3A: `PAGO_YAPE` (Inmersión Pantalla Completa):**
-   - Fondo ciruela/púrpura (`#742384`) con acentos Plin (`#00d3b5`).
-   - Tarjeta blanca central de alto contraste con **Código QR SVG grande (220x220px)**.
+3. **💜 Estado 3A: `PAGO_YAPE` (Inmersión Pantalla Completa · QR Reales Yape / Plin):**
+   - Selector interactivo **`QR Yape` | `QR Plin`** con transición automática entre fondo púrpura (`#742384`) y azul/turquesa Plin (`#00d3b5`).
+   - Carga directa de los códigos QR oficiales (`client/public/qr/yape.jpeg` y `plin.jpeg`) con respaldo vectorial automático.
    - Esquinas de encuadre y haz láser horizontal animado que sube y baja.
    - Comercio verificado `✓ BOTICA NOVA S.A.C.` y monto exacto en tipografía gigante.
 4. **💳 Estado 3B: `PAGO_TARJETA` (Terminal Contactless NFC):**
    - Fondo azul noche obsidiana (`#0f172a`), ondas de radar NFC concéntricas animadas en esmeralda y cian, monto exacto e instrucción interactiva.
-5. **🧾 Estado 4: `COMPROBANTE` (Ticket Digital Térmico):**
+5. **🧾 Estado 4: `COMPROBANTE` (Ticket Digital Térmico en Visor y en Caja POS):**
+   - Apertura instantánea del **Recibo Térmico SUNAT** tanto en la pantalla del cajero (`PosPage.jsx`) como en el smartphone del cliente (`CustomerDisplay.jsx`).
    - Vibración háptica en smartphones (`navigator.vibrate([70, 40, 100])`) al confirmarse el cobro.
-   - Ticket digital de papel blanco con **bordes dentados en zig-zag (CSS clip-path)**.
-   - Datos fiscales, serie correlativa oficial `B001-XXXXX`, tabla de medicamentos, código QR oficial SUNAT y botones interactivos para **Imprimir/PDF** y **Compartir por WhatsApp**.
+   - Ticket digital de papel blanco con **bordes dentados en zig-zag (CSS clip-path)**, serie correlativa `B001-XXXXX`, desglose de Op. Gravada, IGV 18%, efectivo recibido/vuelto, QR SUNAT y botones para **Imprimir/PDF** (`@media print` limpio) y **Compartir por WhatsApp**.
 
 ---
 
@@ -134,8 +134,8 @@ npm start
 ```
 *Salida esperada:*
 ```text
-🚀 Servidor ERP/POS Botica "Nova Salud" activo en http://localhost:3000
-✅ Conexion exitosa a la base de datos MySQL (botica_net_db)
+[SERVER] Sistema ERP/POS Botica Nova activo en http://localhost:3000
+[DB] Conexión verificada con MySQL (botica_net_db)
 ```
 
 #### Terminal 2 — Frontend React + Vite (Abierto a la Red Local):
@@ -151,16 +151,16 @@ npm run client
 ```
 
 > [!TIP]
-> Al estar configurado con `--host`, cualquier smartphone conectado a la misma red Wi-Fi o Hotspot puede ingresar directamente mediante la URL de red (`Network`).
+> Al estar configurado con `--host` y el generador QR nativo (`qrLocalMatrix.js`), cualquier smartphone conectado a la misma red Wi-Fi o Hotspot de Windows puede escanear el código QR del modal **Visor Cliente** sin requerir acceso a Internet.
 
 ---
 
-### Paso 5: Compilación para Producción (Build)
-Si deseas generar la versión optimizada y empaquetada para producción:
+### Paso 5: Compilación para Producción y Despliegue en la Nube (Build)
+Si deseas generar la versión optimizada para producción o servir todo el sistema unificado desde `http://localhost:3000`:
 ```bash
 npm --prefix client run build
 ```
-Los archivos optimizados se generan en `client/dist/`.
+Los archivos optimizados se generan en `client/dist/` y son detectados automáticamente por `index.js`. Para entornos cloud (Vercel + Render/Railway), el sistema soporta variables de entorno (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`, `DB_SSL`, `CORS_ORIGIN` y `VITE_API_URL`).
 
 ---
 
@@ -170,25 +170,31 @@ Los archivos optimizados se generan en `client/dist/`.
 | :---: | :--- |
 | **`vendedor` / `123`** | Credenciales oficiales de acceso al sistema en `LoginHUD`. |
 | **`F9`** | **Auto-Login Demostrativo:** Escribe automáticamente las credenciales y accede a caja. |
-| **`Alt + L`** | **Bloqueo Inmediato:** Bloquea la sesión del cajero y regresa al cockpit 3D. |
-| **`F12`** | Emisión rápida de Boleta Electrónica en el POS. |
-| **`[📱 Visor Cliente]`** | Abre el modal de sincronización con QR y simulador de celular en PC. |
+| **`F2`** | **Búsqueda Rápida en POS:** Enfoca de inmediato el buscador de medicamentos y lotes. |
+| **`F12`** | **Cobro Rápido en Caja:** Emite la Boleta Electrónica SUNAT y abre el recibo térmico. |
+| **`Esc`** | **Cerrar Recibo / Nueva Venta:** Cierra el modal de boleta en caja y prepara el siguiente despacho. |
+| **`Alt + L`** | **Bloqueo Inmediato:** Bloquea la sesión del cajero y regresa al cockpit 3D (también se activa tras 2 min de inactividad). |
+| **`[📱 Visor Cliente]`** | Abre el modal de sincronización con QR 100% offline y simulador de celular en PC. |
 | **`/?visor=cliente`** | URL directa para cargar la Pantalla de Cliente en cualquier smartphone. |
 
 ---
 
-## 🔌 Especificación de la API REST
+## 🔌 Especificación Completa de la API REST (12 Endpoints)
 
 | Método | Endpoint | Descripción | Estado HTTP |
 | :---: | :--- | :--- | :---: |
-| `GET` | `/api/productos` | Catálogo completo de medicamentos ordenado alfabéticamente. | `200 OK` |
+| `POST` | `/api/login` | Autenticación de operadores contra la tabla `vendedores` en MySQL. | `200 OK` |
+| `GET` | `/api/productos` | Catálogo completo con join FEFO 1:1 de lotes y ubicaciones. | `200 OK` |
 | `GET` | `/api/alertas` | Medicamentos con stock crítico ($stock \le stock\_minimo$). | `200 OK` |
-| `POST` | `/api/productos` | Registro de nuevos medicamentos en inventario. | `201 Created` |
-| `POST` | `/api/ventas` | Emisión de venta con descuento atómico de stock (`FOR UPDATE`). | `201 Created` |
-| `GET` | `/api/ventas` | Historial de las últimas ventas emitidas. | `200 OK` |
-| `GET` | `/api/ventas/:id` | Detalle fiscal y líneas de producto de una venta. | `200 OK` |
-| **`GET`** | **`/api/visor-estado`** | **CFD Omni-Sync:** Retorna el estado en memoria RAM e IP local. | `200 OK` |
-| **`POST`** | **`/api/visor-estado`** | **CFD Omni-Sync:** Actualiza el carrito, método y montos en RAM. | `200 OK` |
+| `POST` | `/api/productos` | Alta de nuevo medicamento con lote inicial y asiento en Kardex. | `201 Created` |
+| `PUT` | `/api/productos/:id/stock` | Reabastecimiento rápido de existencias con registro en Kardex. | `200 OK` |
+| `POST` | `/api/ventas` | Emisión de boleta con descuento atómico (`FOR UPDATE`) y Kardex. | `201 Created` |
+| `GET` | `/api/ventas` | Historial correlativo de las últimas boletas emitidas. | `200 OK` |
+| `GET` | `/api/ventas/:id` | Detalle fiscal y líneas de fármacos de un comprobante. | `200 OK` |
+| `GET` | `/api/kardex` | Bitácora contable de entradas, salidas por venta y mermas. | `200 OK` |
+| `GET` | `/api/categorias` | Listado de categorías terapéuticas activas. | `200 OK` |
+| `GET` | `/api/lotes` | Control de lotes FEFO, fechas de vencimiento y anaqueles. | `200 OK` |
+| **`GET/POST`** | **`/api/visor-estado`** | **CFD Omni-Sync:** Sincroniza en RAM carrito, QR, vuelto y boleta + IP local. | `200 OK` |
 
 ---
 
@@ -197,46 +203,46 @@ Los archivos optimizados se generan en `client/dist/`.
 ```text
 Botica_Net/
 │
-├── index.js                      # Backend Express, API REST y endpoints CFD en RAM
-├── db.js                         # Pool asíncrono con mysql2/promise
-├── database.sql                  # DDL de tablas relacionales y catálogo de prueba
-├── package.json                  # Dependencias del servidor backend
-├── README.md                     # Este manual integral de arquitectura y uso
-├── PLAN.md                       # Plan maestro de requerimientos y módulos
+├── index.js                      # Backend Express, 12 endpoints REST, CORS y servidor SPA
+├── db.js                         # Pool MySQL asíncrono (soporta XAMPP local y variables Cloud)
+├── database.sql                  # DDL de 7 tablas relacionales y catálogo clínico inicial
+├── package.json                  # Dependencias y scripts del servidor backend
+├── README.md                     # Manual integral de arquitectura, instalación y uso
+├── PLAN.md                       # Plan maestro de fases, requerimientos y contingencias
 │
-├── public/                       # Recursos estáticos y capturas
+├── public/                       # Recursos de documentación del repositorio
 │   └── img/                      # Diagramas y capturas del sistema (db_design.jpg, etc.)
 │
 └── client/                       # Frontend SPA (React 19 + Vite)
-    ├── package.json              # Dependencias y scripts del frontend (vite --host)
-    ├── vite.config.js            # Configuración de proxy y host para red local
+    ├── package.json              # Dependencias y scripts del frontend (vite, build, lint)
+    ├── vite.config.js            # Configuración de proxy /api y host para red local
+    ├── vercel.json               # Reglas de reescritura SPA para despliegue en Vercel
     ├── public/
     │   ├── favicon.svg           # Isotipo oficial de Botica Nova
     │   ├── video1.mp4            # Video cinemático diurno de farmacia
     │   ├── video2.mp4            # Video cinemático de anaqueles
-    │   └── productos/            # Fotografías WebP en alta resolución
-    │       ├── paracetamol.webp
-    │       ├── amoxicilina.webp
-    │       ├── ibuprofeno.webp
-    │       └── ...
+    │   ├── qr/                   # Códigos QR reales de recaudación (yape.jpeg y plin.jpeg)
+    │   └── productos/            # 11 fotografías WebP verificadas en alta resolución
     └── src/
-        ├── App.jsx               # Enrutador, guardia de sesión y detector de ?visor=cliente
-        ├── App.css               # Estilos globales y barra de sesión POS
+        ├── App.jsx               # Enrutador, watchdog de inactividad (2 min) y ?visor=cliente
+        ├── App.css               # Sistema de diseño clínico, recibo térmico e impresión limpia
         ├── pages/
-        │   ├── PosPage.jsx       # Terminal POS con métodos de pago y emisor Omni-Sync
-        │   ├── InventarioPage.jsx # Control de stock y kardex
-        │   ├── AlertasPage.jsx   # Reposición de stock crítico FEFO / DIGEMID
-        │   └── ComprobantesPage.jsx # Historial tributario
+        │   ├── PosPage.jsx       # Terminal POS con Ticket de 5 pasos, Boleta en Caja y Omni-Sync
+        │   ├── AlertasPage.jsx   # Semáforo completo (<=15 Rojo, 16-30 Amarillo, >30 Verde)
+        │   ├── InventarioPage.jsx # Catálogo maestro FEFO y alta con selector visual WebP
+        │   ├── KardexPage.jsx    # Auditoría contable de entradas, salidas y saldos
+        │   └── ComprobantesPage.jsx # Historial correlativo SUNAT e inspección de boletas
         ├── components/
-        │   ├── LoginHUD.jsx      # Cockpit de autenticación 3D con videos y telemetría
-        │   ├── LoginHUD.css      # Estilos cinemáticos y degradados de lujo
-        │   ├── CustomerDisplay.jsx # Visor de Cliente Mobile-First (Estados 1, 2, 3, 4)
-        │   ├── CustomerDisplay.css # Estilos táctiles Awwwards y ticket con bordes dentados
-        │   ├── VisorModal.jsx    # Modal de doble acción (QR para móvil y simulador Plan C)
-        │   ├── VisorModal.css    # Estilos del modal de contingencia
-        │   └── Navbar.jsx        # Navegación del ERP farmacéutico
+        │   ├── Navbar.jsx        # Barra superior ejecutiva con estado de turno y atajos
+        │   ├── LoginHUD.jsx      # Cockpit 3D con videos en bucle, telemetría y atajo F9
+        │   ├── CustomerDisplay.jsx # Visor de Cliente Mobile-First (4 estados + QR Yape/Plin)
+        │   ├── PaymentQrBox.jsx  # Lector inteligente de QR reales (yape.jpeg / plin.jpeg)
+        │   ├── VisorModal.jsx    # Modal Zero-Fail (QR Hotspot 100% offline + Simulador Plan C)
+        │   └── Icons.jsx         # Sistema iconográfico vectorial clínico
         └── utils/
-            └── productImages.js  # Resolutor inteligente de fotos WebP por medicamento
+            ├── productImages.js  # Resolutor de imágenes WebP del catálogo farmacéutico
+            ├── qrLocalMatrix.js  # Generador nativo de matriz QR ISO/IEC 18004 sin Internet
+            └── apiBridge.js      # Puente transparente para VITE_API_URL en la nube
 ```
 
 ---

@@ -1,253 +1,2119 @@
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
+/* ==========================================================================
+   BOTICA NOVA · PRECISION CLINICAL ENTERPRISE DESIGN SYSTEM
+   Arquitectura Obsidian Carbon + Surgical Emerald · Cero Elementos Genéricos
+   ========================================================================== */
 
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-}
-
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
-}
-
-#center {
+.erp-app-shell {
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
+  background-color: var(--bg-canvas);
+  background-image:
+    radial-gradient(ellipse 80% 45% at 50% -12%, rgba(16, 185, 129, 0.075), transparent 70%),
+    linear-gradient(180deg, rgba(14, 21, 32, 0.55) 0%, rgba(6, 9, 14, 1) 360px);
+  color: var(--text-primary);
 }
 
-#next-steps {
+.erp-main-stage {
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 26px clamp(14px, 2.4vw, 32px) 48px;
+}
+
+/* ==========================================================================
+   1. ARCHITECTURAL ENTERPRISE COMMAND TOPBAR (ZERO-CLIPPING PRECISION DECK)
+   ========================================================================== */
+.erp-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  background: linear-gradient(180deg, rgba(13, 20, 31, 0.94) 0%, rgba(8, 12, 19, 0.92) 100%);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 10px 28px -14px rgba(0, 0, 0, 0.82);
+}
+
+.erp-topbar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 clamp(14px, 2vw, 28px);
+  min-height: 60px;
   display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
 }
 
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
+.erp-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.2vw, 18px);
+  flex-shrink: 0;
 }
 
-.ticks {
+.erp-brand-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  flex-shrink: 0;
+  padding: 4px 0;
+  transition: opacity 0.16s ease;
+}
+
+.erp-brand-block:hover {
+  opacity: 0.92;
+}
+
+.erp-brand-logo {
+  width: 30px;
+  height: 30px;
+  display: block;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(16, 185, 129, 0.28));
+}
+
+.erp-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.12;
+  gap: 2px;
+}
+
+.erp-brand-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.erp-brand-sub {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.erp-topbar-divider {
+  width: 1px;
+  height: 22px;
+  background: linear-gradient(
+    180deg,
+    rgba(148, 163, 184, 0.04) 0%,
+    rgba(148, 163, 184, 0.22) 50%,
+    rgba(148, 163, 184, 0.04) 100%
+  );
+  flex-shrink: 0;
+}
+
+/* Navegación Arquitectónica de Línea Base (Sin Cajas Redundantes) */
+.erp-nav-links {
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+  gap: 2px;
+  margin-right: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.erp-nav-links::-webkit-scrollbar {
+  display: none;
+}
+
+.erp-nav-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 60px;
+  padding: 0 clamp(9px, 0.95vw, 14px);
+  font-size: 0.815rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+
+.erp-nav-item svg {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+
+.erp-nav-item::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+  transform: scaleX(0.4);
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.erp-nav-item:hover {
+  color: #e2e8f0;
+  background: linear-gradient(180deg, transparent 25%, rgba(148, 163, 184, 0.045) 100%);
+}
+
+.erp-nav-item:hover svg {
+  color: #cbd5e1;
+}
+
+.erp-nav-item:hover::after {
+  background: rgba(148, 163, 184, 0.35);
+  transform: scaleX(0.75);
+  opacity: 1;
+}
+
+.erp-nav-item.active {
+  color: #ffffff;
+  font-weight: 600;
+  background: radial-gradient(
+    ellipse 85% 65% at 50% 100%,
+    rgba(16, 185, 129, 0.13) 0%,
+    transparent 76%
+  );
+}
+
+.erp-nav-item.active svg {
+  color: var(--emerald-400);
+  filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.35));
+}
+
+.erp-nav-item.active::after {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.35), #34d399 50%, rgba(16, 185, 129, 0.35));
+  box-shadow: 0 -2px 10px rgba(16, 185, 129, 0.55);
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+.erp-nav-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--amber-400);
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cluster de Telemetría de Operador y Controles de Precisión (Derecha) */
+.erp-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.erp-operator-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 4px 2px 0;
+}
+
+.erp-operator-avatar {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, rgba(24, 34, 49, 0.95) 0%, rgba(13, 20, 31, 0.95) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.erp-live-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--emerald-500);
+  border: 2px solid #090e17;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+}
+
+.erp-operator-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  gap: 1px;
+}
+
+.erp-operator-name {
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.erp-operator-shift {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.erp-actions-divider {
+  margin: 0 2px;
+}
+
+/* Botones de Comando de Altura Unificada (34px exactos) */
+.erp-cmd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 0.775rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.16s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.erp-cmd-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Visor Cliente: Cristal Especular Obsidian-Emerald (Cero Saturación Chillona) */
+.erp-cmd-visor {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.17) 0%, rgba(5, 150, 105, 0.08) 100%);
+  color: #ecfdf5;
+  border: 1px solid rgba(52, 211, 153, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 10px -4px rgba(16, 185, 129, 0.35);
+}
+
+.erp-cmd-visor svg {
+  color: var(--emerald-400);
+}
+
+.erp-visor-beacon {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--emerald-400);
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.8);
+  flex-shrink: 0;
+}
+
+.erp-cmd-visor:hover {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.26) 0%, rgba(5, 150, 105, 0.15) 100%);
+  border-color: rgba(52, 211, 153, 0.58);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 14px -4px rgba(16, 185, 129, 0.45);
+}
+
+/* Bloquear: Pizarra de Titanio en Reposo -> Carmesí Clínico solo al Hover */
+.erp-cmd-lock {
+  background: rgba(15, 23, 36, 0.72);
+  color: var(--text-secondary);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.erp-cmd-lock svg {
+  color: var(--text-muted);
+  transition: color 0.18s ease;
+}
+
+.erp-cmd-lock .erp-kbd {
+  background: rgba(6, 9, 14, 0.65);
+  border-color: rgba(148, 163, 184, 0.18);
+  color: var(--text-muted);
+  font-size: 0.63rem;
+  padding: 1px 5px;
+  transition: border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+}
+
+.erp-cmd-lock:hover,
+.erp-cmd-lock:focus-visible {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.42);
+}
+
+.erp-cmd-lock:hover svg,
+.erp-cmd-lock:focus-visible svg {
+  color: var(--crimson-400);
+}
+
+.erp-cmd-lock:hover .erp-kbd,
+.erp-cmd-lock:focus-visible .erp-kbd {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+.erp-kbd {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: inherit;
+}
+
+/* ==========================================================================
+   2. ENCABEZADOS DE PÁGINA Y TIRAS KPI EJECUTIVAS
+   ========================================================================== */
+.erp-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.erp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--emerald-400);
+  margin-bottom: 6px;
+}
+
+.erp-page-title {
+  margin: 0;
+  font-size: clamp(1.38rem, 2vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+
+.erp-page-subtitle {
+  margin: 5px 0 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  max-width: 680px;
+}
+
+.erp-header-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Tira de KPIs ejecutivos */
+.erp-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.erp-kpi-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.erp-kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.7), transparent);
+}
+
+.erp-kpi-card.kpi-warn::before {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.8), transparent);
+}
+
+.erp-kpi-card.kpi-danger::before {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.8), transparent);
+}
+
+.erp-kpi-label {
+  font-family: var(--font-mono);
+  font-size: 0.69rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.erp-kpi-value {
+  font-family: var(--font-mono);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.erp-kpi-value.val-emerald { color: var(--emerald-400); }
+.erp-kpi-value.val-amber { color: var(--amber-400); }
+.erp-kpi-value.val-crimson { color: var(--crimson-400); }
+
+.erp-kpi-foot {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+/* ==========================================================================
+   3. CONTROLES, BUSCADORES, BOTONES Y PÍLDORAS DE FILTRO
+   ========================================================================== */
+.erp-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.erp-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 280px;
+  max-width: 440px;
+}
+
+.erp-search-icon {
+  position: absolute;
+  left: 13px;
+  color: var(--text-dim);
+  pointer-events: none;
+  display: flex;
+}
+
+.erp-input {
+  width: 100%;
+  min-height: 40px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.erp-input.with-icon {
+  padding-left: 38px;
+}
+
+.erp-input:hover {
+  border-color: var(--border-strong);
+}
+
+.erp-input:focus {
+  outline: none;
+  border-color: var(--emerald-500);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.erp-input::placeholder {
+  color: var(--text-dim);
+}
+
+.erp-select {
+  width: 100%;
+  min-height: 40px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 0.86rem;
+}
+
+.erp-select:focus {
+  outline: none;
+  border-color: var(--emerald-500);
+}
+
+.erp-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.erp-filter-pill {
+  min-height: 34px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.erp-filter-pill:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.erp-filter-pill.active {
+  background: var(--emerald-tint);
+  color: var(--emerald-400);
+  border-color: var(--border-emerald);
+}
+
+/* Botones Corporativos */
+.erp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.erp-btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.erp-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.erp-btn-primary {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border-color: rgba(52, 211, 153, 0.4);
+  box-shadow: 0 6px 18px -6px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.erp-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #14c48b 0%, #06a471 100%);
+}
+
+.erp-btn-primary:disabled {
+  background: rgba(15, 23, 36, 0.9);
+  color: var(--text-dim);
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow: none;
+  opacity: 1;
+}
+
+.erp-btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.erp-btn-secondary:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: rgba(148, 163, 184, 0.38);
+}
+
+.erp-btn-visor-pay {
+  background: rgba(45, 212, 191, 0.11);
+  color: var(--teal-400);
+  border-color: rgba(45, 212, 191, 0.38);
+}
+
+.erp-btn-visor-pay:hover:not(:disabled) {
+  background: rgba(45, 212, 191, 0.2);
+  color: #ffffff;
+}
+
+.erp-btn-amber {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--amber-400);
+  border-color: var(--border-amber);
+}
+
+.erp-btn-amber:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.24);
+  color: #ffffff;
+}
+
+.erp-btn-sm {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  border-radius: 7px;
+}
+
+/* ==========================================================================
+   4. NOTIFICACIONES CLÍNICAS NO BLOQUEANTES (REEMPLAZA WINDOW.ALERT)
+   ========================================================================== */
+.erp-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 18px;
+  font-size: 0.85rem;
+  animation: erpSlideDown 0.22s ease-out;
+}
+
+@keyframes erpSlideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.erp-banner-success {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid var(--border-emerald);
+  color: #a7f3d0;
+}
+
+.erp-banner-warn {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid var(--border-amber);
+  color: #fde68a;
+}
+
+.erp-banner-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--border-crimson);
+  color: #fecaca;
+}
+
+.erp-banner-close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+}
+
+.erp-banner-close:hover {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   5. TABLAS DE PRECISIÓN AUDITORA & BADGES SEMÁNTICOS
+   ========================================================================== */
+.erp-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+.erp-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.erp-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.84rem;
+}
+
+.erp-table thead tr {
+  background: rgba(8, 13, 20, 0.85);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.erp-table th {
+  padding: 13px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.69rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.erp-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.erp-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.erp-table tbody tr:hover {
+  background: rgba(148, 163, 184, 0.04);
+}
+
+.erp-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.erp-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Badges Clínicos */
+.erp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.erp-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.badge-ok {
+  background: var(--emerald-tint);
+  color: var(--emerald-400);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-warn {
+  background: var(--amber-tint);
+  color: var(--amber-400);
+  border: 1px solid rgba(245, 158, 11, 0.34);
+}
+
+.badge-danger {
+  background: var(--crimson-tint);
+  color: var(--crimson-400);
+  border: 1px solid rgba(239, 68, 68, 0.34);
+}
+
+.badge-neutral {
+  background: rgba(148, 163, 184, 0.09);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   6. TERMINAL POS (CATÁLOGO + PANEL DE DESPACHO CONTINGENTE)
+   ========================================================================== */
+.pos-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(340px, 420px);
+  gap: 22px;
+  align-items: start;
+}
+
+.pos-products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 14px;
+}
+
+.pos-product-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: var(--shadow-panel);
+  transition: transform 0.18s ease, border-color 0.18s ease;
+  min-width: 0;
+}
+
+.pos-product-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+}
+
+.pos-product-card.is-danger {
+  border-color: rgba(239, 68, 68, 0.44);
+}
+
+.pos-product-card.is-critical {
+  border-color: rgba(245, 158, 11, 0.42);
+}
+
+.pos-product-card.is-optimal {
+  border-color: rgba(16, 185, 129, 0.24);
+}
+
+.pos-product-card.in-cart {
+  border-color: var(--border-emerald);
+  box-shadow: 0 10px 26px -10px rgba(16, 185, 129, 0.25);
+}
+
+.pos-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.pos-category-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: rgba(8, 13, 20, 0.8);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 7px;
+  border-radius: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pos-thumb-stage {
   position: relative;
   width: 100%;
+  height: 92px;
+  aspect-ratio: 16 / 9;
+  background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.55) 0%, rgba(8, 13, 20, 0.92) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  overflow: hidden;
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
+.pos-thumb-stage img {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  transition: transform 0.22s ease;
+}
+
+.pos-product-card:hover .pos-thumb-stage img {
+  transform: scale(1.06);
+}
+
+.pos-cart-qty-pill {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: var(--emerald-600);
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.pos-prod-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.34rem;
+}
+
+.pos-price-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pos-price-val {
+  font-family: var(--font-mono);
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: var(--emerald-400);
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-lot-code {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-dim);
+}
+
+.pos-stock-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  padding-top: 6px;
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-shelf-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  padding: 3px 7px;
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.pos-shelf-tag span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Panel Ticket POS Sticky (Flujo Ejecutivo en Pasos Claros) */
+.pos-ticket-panel {
+  position: sticky;
+  top: 80px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: 18px;
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pos-ticket-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pos-ticket-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pos-step-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.pos-step-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pos-step-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.pos-step-hint {
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Selector Segmentado de Cliente (Cero escritura innecesaria) */
+.pos-client-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+}
+
+.pos-client-tab {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.77rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.pos-client-tab:hover {
+  color: var(--text-primary);
+}
+
+.pos-client-tab.active {
+  background: rgba(16, 185, 129, 0.13);
+  color: #ffffff;
+  border-color: rgba(52, 211, 153, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.pos-dni-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pos-dni-input-wrap .erp-input {
+  padding-right: 34px;
+}
+
+.pos-dni-clear {
+  position: absolute;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 5px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.pos-dni-clear:hover {
+  background: rgba(148, 163, 184, 0.22);
+  color: #ffffff;
+}
+
+.pos-empty-state {
+  padding: 20px 14px;
+  background: rgba(8, 13, 20, 0.5);
+  border: 1px dashed rgba(148, 163, 184, 0.2);
+  border-radius: var(--radius-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pos-empty-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.pos-empty-sub {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.38;
+}
+
+.pos-cart-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.pos-cart-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+}
+
+.pos-cart-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pos-cart-name {
+  font-size: 0.81rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pos-cart-unit {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.pos-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  padding: 2px;
+}
+
+.pos-step-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pos-step-btn:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.14);
+  color: #ffffff;
+}
+
+.pos-step-qty {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Selector de Medio de Pago (3 Canales Reales: Efectivo | Yape / Plin | Tarjeta) */
+.pos-pay-methods {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.pos-pay-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 9px 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.pos-pay-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.pos-pay-btn.active {
+  background: var(--emerald-tint);
+  color: var(--emerald-400);
+  border-color: var(--border-emerald);
+}
+
+/* Vista Rápida de QR Real en Caja */
+.pos-qr-inline-box {
+  margin-top: 2px;
+  padding: 9px 11px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pos-qr-inline-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pos-qr-inline-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.pos-qr-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pos-qr-toggle-btn:hover {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.pos-qr-inline-preview {
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(15, 23, 36, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+}
+
+.pos-cash-drawer {
+  margin-top: 2px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pos-bills-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.pos-bill-chip {
+  flex: 1;
+  min-width: 52px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pos-bill-chip:hover {
+  border-color: var(--emerald-500);
+  color: var(--emerald-400);
+}
+
+.pos-visor-sync-notice {
+  margin-top: 2px;
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.38;
+}
+
+/* Resumen Tributario de Caja Registradora */
+.pos-totals-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pos-tax-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-grand-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 7px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+.pos-grand-amount {
+  font-family: var(--font-mono);
+  font-size: 1.28rem;
+  color: var(--emerald-400);
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-grand-amount.is-zero {
+  color: var(--text-dim);
+}
+
+/* Jerarquía de Cobro Sin Confusión: 1 Botón Principal + 1 Acción Secundaria Discreta */
+.pos-checkout-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pos-main-pay-btn {
+  width: 100%;
+  min-height: 46px;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.pos-secondary-visor-btn {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: color 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.pos-secondary-visor-btn:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.07);
+  border-color: rgba(148, 163, 184, 0.32);
+  color: var(--text-primary);
+}
+
+.pos-secondary-visor-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pos-visor-waiting-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.34);
+  font-size: 0.75rem;
+  color: #d1fae5;
+}
+
+.pos-visor-waiting-info {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.pos-visor-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--emerald-400);
+  box-shadow: 0 0 8px var(--emerald-400);
+  flex-shrink: 0;
+}
+
+.pos-visor-cancel-btn {
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   7. MODALES EMPRESARIALES & SELECTOR VISUAL DE IMÁGENES WEBP (REQ 2.D)
+   ========================================================================== */
+.erp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  background: rgba(4, 7, 12, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.erp-modal-card {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90dvh;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 28px 64px -16px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.erp-modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(8, 13, 20, 0.65);
+}
+
+.erp-modal-body {
+  padding: 22px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.erp-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.erp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.erp-field.span-2 {
+  grid-column: span 2;
+}
+
+.erp-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Selector Visual WebP (PLAN.md 2.D) */
+.webp-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(98px, 1fr));
+  gap: 8px;
+}
+
+.webp-option-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.16s ease;
+}
+
+.webp-option-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.webp-option-btn.selected {
+  background: var(--emerald-tint);
+  border-color: var(--emerald-500);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.22);
+}
+
+.webp-option-btn img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.webp-option-label {
+  font-size: 0.67rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.erp-modal-footer {
+  padding: 15px 24px;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(8, 13, 20, 0.65);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   8. ALERTAS DE REPOSICIÓN Y COMPROBANTES FISCALES
+   ========================================================================== */
+.alertas-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.alerta-card {
+  background: var(--bg-panel);
+  border: 1px solid rgba(245, 158, 11, 0.36);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-panel);
+}
+
+.alerta-progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.alerta-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 100%);
+}
+
+.comprobantes-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+/* ==========================================================================
+   9. RESPONSIVIDAD UNIVERSAL (320PX A 4K)
+   ========================================================================== */
+@media (max-width: 1200px) {
+  .erp-cmd-lock .erp-kbd {
+    display: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .erp-topbar-inner {
+    flex-wrap: wrap;
+    min-height: auto;
+    padding-top: 8px;
+    row-gap: 4px;
   }
 
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
+  .erp-brand-divider {
+    display: none;
   }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
+
+  .erp-nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    border-top: 1px solid rgba(148, 163, 184, 0.09);
+    margin-top: 4px;
+  }
+
+  .erp-nav-item {
+    min-height: 44px;
+  }
+
+  .pos-workspace-grid,
+  .comprobantes-split {
+    grid-template-columns: 1fr;
+  }
+
+  .pos-ticket-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .erp-operator-meta,
+  .erp-actions-divider {
+    display: none;
+  }
+
+  .erp-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .erp-field.span-2 {
+    grid-column: span 1;
+  }
+
+  .erp-cmd-btn,
+  .erp-btn {
+    min-height: 44px;
+  }
+
+  .pos-receipt-actions {
+    flex-wrap: wrap;
+  }
+
+  .pos-receipt-done-btn {
+    width: 100%;
   }
 }
 
 /* ==========================================================================
-   BARRA DE SESIÓN SUPERIOR Y BOTONES POS (INCLUYE VISOR CLIENTE)
+   9. MODAL DE RECIBO / BOLETA ELECTRÓNICA EN CAJA POS (SUNAT)
    ========================================================================== */
-.pos-session-bar {
-  background: #0f172a;
-  border-bottom: 1px solid #1e293b;
-  padding: 8px 24px;
+@keyframes posReceiptPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.pos-receipt-modal-card {
+  width: 100%;
+  max-width: 448px;
+  max-height: 92dvh;
+  background: var(--bg-panel);
+  border: 1px solid rgba(52, 211, 153, 0.34);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 32px 72px -16px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(16, 185, 129, 0.14);
   display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: posReceiptPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pos-receipt-top-status {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.12) 0%, rgba(8, 13, 20, 0.85) 100%);
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  font-size: 0.82rem;
-  color: #94a3b8;
+  gap: 12px;
 }
 
-.pos-session-left {
+.pos-receipt-status-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 11px;
+  min-width: 0;
 }
 
-.pos-session-user {
-  color: #f8fafc;
-  font-weight: 700;
-}
-
-.pos-session-shift {
-  color: #38bdf8;
-  font-weight: 600;
-}
-
-.pos-visor-btn {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  color: #ffffff;
-  border: 1px solid #10b981;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
+.pos-receipt-check-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  color: var(--emerald-400);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-  transition: all 0.2s;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.pos-visor-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
-  background: #10b981;
-}
-
-.pos-lock-btn {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.pos-lock-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
+.pos-receipt-status-title {
+  font-size: 0.9rem;
+  font-weight: 800;
   color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.pos-receipt-status-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.pos-receipt-scroll {
+  padding: 18px 20px;
+  overflow-y: auto;
+  background: rgba(4, 8, 14, 0.6);
+  display: flex;
+  justify-content: center;
+}
+
+.pos-thermal-paper {
+  width: 100%;
+  max-width: 376px;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 20px 18px 18px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+  border-top: 4px solid #059669;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.pos-thermal-header {
+  text-align: center;
+}
+
+.pos-thermal-company {
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: #0f172a;
+}
+
+.pos-thermal-ruc {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #334155;
+  margin-top: 2px;
+}
+
+.pos-thermal-address {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.pos-thermal-doc-box {
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1.5px solid #0f172a;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.pos-thermal-doc-type {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #0f172a;
+}
+
+.pos-thermal-doc-num {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #047857;
+  margin-top: 1px;
+}
+
+.pos-thermal-divider {
+  margin: 11px 0;
+  border-top: 1px dashed #94a3b8;
+}
+
+.pos-thermal-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.74rem;
+}
+
+.pos-thermal-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.pos-thermal-meta-row span {
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.pos-thermal-meta-row strong {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+}
+
+.pos-thermal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.pos-thermal-table th {
+  text-align: left;
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.pos-thermal-table .th-cant,
+.pos-thermal-table .td-cant {
+  width: 38px;
+  text-align: center;
+  font-family: var(--font-mono);
+  vertical-align: top;
+}
+
+.pos-thermal-table .th-imp,
+.pos-thermal-table .td-imp {
+  text-align: right;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  vertical-align: top;
+}
+
+.pos-thermal-table td {
+  padding: 6px 0 4px;
+  color: #0f172a;
+}
+
+.pos-thermal-table .td-desc {
+  padding-right: 8px;
+}
+
+.td-prod-name {
+  display: block;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.td-prod-unit {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  color: #64748b;
+}
+
+.pos-thermal-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pos-thermal-tax-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  color: #334155;
+  font-family: var(--font-mono);
+}
+
+.pos-thermal-grand-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1.5px solid #0f172a;
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: #0f172a;
+  font-family: var(--font-mono);
+}
+
+.pos-thermal-qr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pos-thermal-qr-box {
+  padding: 3px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.pos-thermal-legal {
+  font-size: 0.66rem;
+  color: #475569;
+  line-height: 1.35;
+}
+
+.pos-thermal-thanks {
+  margin-top: 11px;
+  padding-top: 8px;
+  border-top: 1px dotted #cbd5e1;
+  text-align: center;
+  font-size: 0.69rem;
+  font-weight: 700;
+  color: #047857;
+}
+
+.pos-receipt-actions {
+  padding: 13px 18px;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(8, 13, 20, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pos-receipt-done-btn {
+  flex: 1;
+}
+
+@media print {
+  .erp-topbar,
+  .no-print {
+    display: none !important;
+  }
+
+  body,
+  .erp-app-shell,
+  .erp-main-container {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .pos-receipt-backdrop {
+    position: static !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
+  .pos-receipt-modal-card {
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    animation: none !important;
+  }
+
+  .pos-receipt-scroll {
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .pos-thermal-paper {
+    max-width: 340px !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+  }
 }

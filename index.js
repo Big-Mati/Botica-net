@@ -1,23 +1,38 @@
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const clientDistPath = path.join(__dirname, 'client', 'dist');
 
 // =========================================================================
-// MIDDLEWARES GLOBALES Y SEGURIDAD DEFENSIVA (OWASP)
+// MIDDLEWARES GLOBALES, CORS NUBE (VERCEL + RENDER) Y SEGURIDAD (OWASP)
 // =========================================================================
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    next();
+
+    const allowedOrigin = process.env.CORS_ORIGIN || '*';
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+    return next();
 });
 
 app.use(express.json({ limit: '50kb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+if (fs.existsSync(clientDistPath)) {
+    app.use(express.static(clientDistPath));
+}
+app.use('/img', express.static(path.join(__dirname, 'public', 'img')));
 
 /**
  * Normaliza un registro de la tabla productos para garantizar tipos numéricos
@@ -43,8 +58,54 @@ function normalizarProducto(row) {
 }
 
 // =========================================================================
+// ENDPOINT 0: Autenticación de Operadores / Químicos Farmacéuticos (POST /api/login)
+// =========================================================================
+app.post('/api/login', async (req, res) => {
+    try {
+        const usuario = typeof req.body?.usuario === 'string' ? req.body.usuario.trim().toLowerCase() : '';
+        const clave = typeof req.body?.clave === 'string' ? req.body.clave.trim() : '';
+
+        if (!usuario || !clave || usuario.length > 50 || clave.length > 100) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ingrese credenciales válidas de operador.'
+            });
+        }
+
+        const [rows] = await pool.execute(
+            'SELECT id_vendedor, usuario, nombre, rol, activo FROM vendedores WHERE LOWER(usuario) = ? AND clave = ? LIMIT 1;',
+            [usuario, clave]
+        );
+
+        if (rows.length === 0 || !rows[0].activo) {
+            return res.status(401).json({
+                success: false,
+                message: 'Credenciales inválidas o cuenta de operador inactiva.'
+            });
+        }
+
+        const op = rows[0];
+        return res.status(200).json({
+            success: true,
+            operador: {
+                id_vendedor: Number(op.id_vendedor),
+                usuario: op.usuario,
+                nombre: op.nombre,
+                rol: op.rol
+            }
+        });
+    } catch (error) {
+        console.error('[POST /api/login] Error:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Error al verificar credenciales en el servidor.'
+        });
+    }
+});
+
+// =========================================================================
 // ENDPOINT 1: Listar Catálogo de Productos (GET /api/productos)
-// Contrato PLAN.md Sección 4.1
+// Contrato PLAN.md Sección 4.1 — Join FEFO 1:1 sin duplicidad de filas
 // =========================================================================
 app.get('/api/productos', async (req, res) => {
     try {
@@ -54,7 +115,13 @@ app.get('/api/productos', async (req, res) => {
                    l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
             FROM productos p
             LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
-            LEFT JOIN lotes l ON p.id_producto = l.id_producto
+            LEFT JOIN lotes l ON l.id_lote = (
+                SELECT l2.id_lote
+                FROM lotes l2
+                WHERE l2.id_producto = p.id_producto
+                ORDER BY (l2.stock_lote > 0) DESC, l2.fecha_vencimiento ASC, l2.id_lote ASC
+                LIMIT 1
+            )
             ORDER BY p.nombre ASC;
         `;
         const [rows] = await pool.query(sql);
@@ -70,7 +137,7 @@ app.get('/api/productos', async (req, res) => {
 
 // =========================================================================
 // ENDPOINT 2: Listar Productos con Alerta de Reposición (GET /api/alertas)
-// Contrato PLAN.md Sección 4.2 (stock <= stock_minimo)
+// Contrato PLAN.md Sección 4.2 (stock <= stock_minimo) — Join FEFO 1:1
 // =========================================================================
 app.get('/api/alertas', async (req, res) => {
     try {
@@ -80,7 +147,13 @@ app.get('/api/alertas', async (req, res) => {
                    l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
             FROM productos p
             LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
-            LEFT JOIN lotes l ON p.id_producto = l.id_producto
+            LEFT JOIN lotes l ON l.id_lote = (
+                SELECT l2.id_lote
+                FROM lotes l2
+                WHERE l2.id_producto = p.id_producto
+                ORDER BY (l2.stock_lote > 0) DESC, l2.fecha_vencimiento ASC, l2.id_lote ASC
+                LIMIT 1
+            )
             WHERE p.stock <= p.stock_minimo 
             ORDER BY p.stock ASC;
         `;
@@ -263,7 +336,13 @@ app.put('/api/productos/:id/stock', async (req, res) => {
                     l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
              FROM productos p
              LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
-             LEFT JOIN lotes l ON p.id_producto = l.id_producto
+             LEFT JOIN lotes l ON l.id_lote = (
+                 SELECT l2.id_lote
+                 FROM lotes l2
+                 WHERE l2.id_producto = p.id_producto
+                 ORDER BY (l2.stock_lote > 0) DESC, l2.fecha_vencimiento ASC, l2.id_lote ASC
+                 LIMIT 1
+             )
              WHERE p.id_producto = ?;`,
             [idProducto]
         );
@@ -368,9 +447,18 @@ app.post('/api/ventas', async (req, res) => {
             });
         }
 
-        // 4. Insertar cabecera en tabla ventas con id_vendedor y metodo_pago
-        const metodoPago = typeof req.body?.metodoPago === 'string' ? req.body.metodoPago.slice(0, 30) : 'Efectivo';
-        const idVendedor = Number.isInteger(Number(req.body?.id_vendedor)) ? Number(req.body.id_vendedor) : 1;
+        // 4. Insertar cabecera en tabla ventas con id_vendedor y metodo_pago validados
+        const metodosPermitidos = ['Efectivo', 'Yape', 'Plin', 'Yape / Plin', 'Tarjeta'];
+        const rawMetodo = typeof req.body?.metodoPago === 'string' ? req.body.metodoPago.trim() : 'Efectivo';
+        const metodoPago = metodosPermitidos.includes(rawMetodo) ? rawMetodo : 'Efectivo';
+
+        let idVendedor = Number.isInteger(Number(req.body?.id_vendedor)) && Number(req.body.id_vendedor) > 0
+            ? Number(req.body.id_vendedor)
+            : 1;
+        const [vendCheck] = await conn.execute('SELECT id_vendedor FROM vendedores WHERE id_vendedor = ? LIMIT 1;', [idVendedor]);
+        if (vendCheck.length === 0) {
+            idVendedor = 1;
+        }
 
         const [ventaResult] = await conn.execute(
             'INSERT INTO ventas (id_vendedor, numero_comprobante, cliente, metodo_pago, total) VALUES (?, ?, ?, ?, ?);',
@@ -632,6 +720,8 @@ let estadoVisorCliente = {
     vuelto: 0,
     cliente: 'Público General',
     comprobante: null,
+    esperandoConfirmacionVisor: false,
+    pagoSimuladoAt: null,
     updatedAt: Date.now()
 };
 
@@ -644,11 +734,45 @@ app.get('/api/visor-estado', (req, res) => {
 });
 
 app.post('/api/visor-estado', (req, res) => {
-    estadoVisorCliente = {
-        ...estadoVisorCliente,
-        ...req.body,
-        updatedAt: Date.now()
-    };
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const modosPermitidos = ['IDLE', 'CARRITO', 'PAGO_YAPE', 'PAGO_TARJETA', 'COMPROBANTE'];
+
+    const nextState = { ...estadoVisorCliente };
+
+    if (typeof body.modo === 'string' && modosPermitidos.includes(body.modo)) {
+        nextState.modo = body.modo;
+    }
+
+    if (Array.isArray(body.items)) {
+        nextState.items = body.items.slice(0, 50).map((it) => ({
+            id_producto: Number(it?.id_producto) || 0,
+            nombre: typeof it?.nombre === 'string' ? it.nombre.slice(0, 100) : '',
+            categoria: typeof it?.categoria === 'string' ? it.categoria.slice(0, 50) : 'General',
+            precio: Number(it?.precio) || 0,
+            cantidad: Number(it?.cantidad) || 1,
+            subtotal: Number(it?.subtotal) || 0,
+            imagen: typeof it?.imagen === 'string' ? it.imagen.slice(0, 120) : '/favicon.svg'
+        }));
+    }
+
+    if (body.total !== undefined && Number.isFinite(Number(body.total))) nextState.total = Number(body.total);
+    if (body.subtotalNeto !== undefined && Number.isFinite(Number(body.subtotalNeto))) nextState.subtotalNeto = Number(body.subtotalNeto);
+    if (body.igv !== undefined && Number.isFinite(Number(body.igv))) nextState.igv = Number(body.igv);
+    if (body.efectivoRecibido !== undefined && Number.isFinite(Number(body.efectivoRecibido))) nextState.efectivoRecibido = Number(body.efectivoRecibido);
+    if (body.vuelto !== undefined && Number.isFinite(Number(body.vuelto))) nextState.vuelto = Number(body.vuelto);
+    if (typeof body.metodoPago === 'string') nextState.metodoPago = body.metodoPago.slice(0, 30);
+    if (typeof body.cliente === 'string') nextState.cliente = body.cliente.slice(0, 100);
+    if (body.comprobante !== undefined) nextState.comprobante = body.comprobante && typeof body.comprobante === 'object' ? body.comprobante : null;
+    if (typeof body.esperandoConfirmacionVisor === 'boolean') nextState.esperandoConfirmacionVisor = body.esperandoConfirmacionVisor;
+    if (body.pagoSimuladoAt !== undefined) {
+        nextState.pagoSimuladoAt = Number.isFinite(Number(body.pagoSimuladoAt)) && Number(body.pagoSimuladoAt) > 0
+            ? Number(body.pagoSimuladoAt)
+            : null;
+    }
+
+    nextState.updatedAt = Date.now();
+    estadoVisorCliente = nextState;
+
     return res.status(200).json({
         success: true,
         updatedAt: estadoVisorCliente.updatedAt
@@ -656,8 +780,21 @@ app.post('/api/visor-estado', (req, res) => {
 });
 
 // =========================================================================
+// FALLBACK SPA DE PRODUCCIÓN (Sirve client/dist/index.html para rutas React)
+// =========================================================================
+app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api') && !path.extname(req.path)) {
+        const distIndex = path.join(clientDistPath, 'index.html');
+        if (fs.existsSync(distIndex)) {
+            return res.sendFile(distIndex);
+        }
+    }
+    return next();
+});
+
+// =========================================================================
 // ARRANQUE DEL SERVIDOR EXPRESS
 // =========================================================================
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor ERP/POS Botica "Nova Salud" activo en http://localhost:${PORT}`);
+    console.log(`[SERVER] Sistema ERP/POS Botica Nova activo en http://localhost:${PORT}`);
 });

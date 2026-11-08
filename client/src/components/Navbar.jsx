@@ -1,63 +1,116 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import {
+  IconTerminal,
+  IconBox,
+  IconAlert,
+  IconKardex,
+  IconReceipt,
+  IconMonitor,
+  IconLock
+} from './Icons';
 
-export default function Navbar() {
-  const linkStyle = ({ isActive }) => ({
-    color: isActive ? '#10b981' : '#cbd5e1',
-    textDecoration: 'none',
-    fontWeight: isActive ? '700' : '500',
-    padding: '8px 12px',
-    borderRadius: '6px',
-    background: isActive ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-    transition: 'all 0.2s ease'
-  });
+function obtenerIniciales(nombreCompleto) {
+  const partes = String(nombreCompleto || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (partes.length === 0) return 'OP';
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return `${partes[0][0]}${partes[1][0]}`.toUpperCase();
+}
+
+export default function Navbar({ sesion, alertasCount = 0, onOpenVisor, onLock }) {
+  const navClass = ({ isActive }) => `erp-nav-item${isActive ? ' active' : ''}`;
+  const operadorNombre = sesion?.nombre || sesion?.usuario || 'Operador';
+  const operadorTurno = sesion?.turno || 'Turno Activo';
+  const iniciales = obtenerIniciales(operadorNombre);
 
   return (
-    <header style={{
-      backgroundColor: '#0f172a',
-      borderBottom: '1px solid #1e293b',
-      padding: '0 24px',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '64px'
-      }}>
-        {/* Logotipo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '24px' }}>🏥</span>
-          <div>
-            <strong style={{ color: '#fff', fontSize: '18px', letterSpacing: '-0.5px' }}>BoticaNet+</strong>
-            <span style={{ display: 'block', fontSize: '10px', color: '#10b981', fontWeight: 600 }}>SISTEMA POS & ERP</span>
-          </div>
+    <header className="erp-topbar">
+      <div className="erp-topbar-inner">
+        <div className="erp-topbar-left">
+          <NavLink to="/" className="erp-brand-block" end>
+            <img
+              src="/favicon.svg"
+              alt="Botica Nova"
+              width="30"
+              height="30"
+              className="erp-brand-logo"
+            />
+            <div className="erp-brand-text">
+              <span className="erp-brand-name">Botica Nova</span>
+              <span className="erp-brand-sub">ERP · POS Clínico</span>
+            </div>
+          </NavLink>
+
+          <span className="erp-topbar-divider erp-brand-divider" aria-hidden="true" />
         </div>
 
-        {/* Enlaces de Navegación SPA */}
-        <nav style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <NavLink to="/" style={linkStyle} end>
-            🛒 POS / Venta
+        <nav className="erp-nav-links" aria-label="Módulos del sistema">
+          <NavLink to="/" className={navClass} end>
+            <IconTerminal size={15} />
+            <span>Terminal POS</span>
           </NavLink>
-          <NavLink to="/inventario" style={linkStyle}>
-            📦 Inventario
+          <NavLink to="/inventario" className={navClass}>
+            <IconBox size={15} />
+            <span>Inventario</span>
           </NavLink>
-          <NavLink to="/alertas" style={linkStyle}>
-            ⚠️ Alertas
+          <NavLink to="/alertas" className={navClass}>
+            <IconAlert size={15} />
+            <span>Alertas</span>
+            {alertasCount > 0 && <span className="erp-nav-counter">{alertasCount}</span>}
           </NavLink>
-          <NavLink to="/comprobantes" style={linkStyle}>
-            🧾 Comprobantes
+          <NavLink to="/kardex" className={navClass}>
+            <IconKardex size={15} />
+            <span>Kardex</span>
           </NavLink>
-          <NavLink to="/login" style={linkStyle}>
-            🔐 Login
+          <NavLink to="/comprobantes" className={navClass}>
+            <IconReceipt size={15} />
+            <span>Comprobantes</span>
           </NavLink>
         </nav>
+
+        <div className="erp-topbar-actions">
+          <div
+            className="erp-operator-chip"
+            title={`Operador autenticado: ${operadorNombre} (${operadorTurno})`}
+          >
+            <div className="erp-operator-avatar" aria-hidden="true">
+              <span>{iniciales}</span>
+              <span className="erp-live-dot" />
+            </div>
+            <div className="erp-operator-meta">
+              <span className="erp-operator-name">{operadorNombre}</span>
+              <span className="erp-operator-shift">{operadorTurno}</span>
+            </div>
+          </div>
+
+          <span className="erp-topbar-divider erp-actions-divider" aria-hidden="true" />
+
+          <button
+            type="button"
+            onClick={onOpenVisor}
+            className="erp-cmd-btn erp-cmd-visor"
+            title="Configurar o abrir Pantalla de Cliente (Smartphone / Simulador PC)"
+          >
+            <span className="erp-visor-beacon" aria-hidden="true" />
+            <IconMonitor size={15} />
+            <span>Visor Cliente</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onLock}
+            className="erp-cmd-btn erp-cmd-lock"
+            title="Bloquear terminal activa (Atajo Alt + L)"
+          >
+            <IconLock size={14} />
+            <span>Bloquear</span>
+            <kbd className="erp-kbd">Alt+L</kbd>
+          </button>
+        </div>
       </div>
     </header>
   );
 }
-

@@ -1,0 +1,10 @@
+COLOQUE AQUÍ SUS IMÁGENES DE CÓDIGOS QR REALES DE RECAUDACIÓN:
+
+1. Para pagos con Yape:
+   client/public/qr/yape.png  (también acepta .webp, .jpg o .jpeg)
+
+2. Para pagos con Plin:
+   client/public/qr/plin.png  (también acepta .webp, .jpg o .jpeg)
+   Nota: Si solo coloca yape.png (QR interoperable), el sistema lo usará automáticamente también para Plin.
+
+El Terminal POS y el Visor del Cliente (/?visor=cliente) detectan estos archivos de forma inmediata sin reiniciar el servidor.

@@ -1,4 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { generateQrMatrix } from '../utils/qrLocalMatrix';
+import {
+  IconMonitor,
+  IconDesktop,
+  IconCopy,
+  IconCheck,
+  IconClose,
+  IconShield
+} from './Icons';
 import './VisorModal.css';
 
 export default function VisorModal({ isOpen, onClose }) {
@@ -6,7 +15,6 @@ export default function VisorModal({ isOpen, onClose }) {
   const [copied, setCopied] = useState(false);
   const [customIp, setCustomIp] = useState('');
 
-  // Detectar IP local desde el backend Node
   useEffect(() => {
     if (!isOpen) return;
 
@@ -21,9 +29,6 @@ export default function VisorModal({ isOpen, onClose }) {
       .catch(() => {});
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
-  // Calcular la URL óptima para el celular
   const currentHost = window.location.hostname;
   const currentPort = window.location.port ? `:${window.location.port}` : '';
   const currentProtocol = window.location.protocol;
@@ -34,7 +39,29 @@ export default function VisorModal({ isOpen, onClose }) {
     visorUrl = `${currentProtocol}//${ipToUse}${currentPort}/?visor=cliente`;
   }
 
-  // Abrir simulador en la misma PC (Plan C - Zero-Fail)
+  const qrSvgData = useMemo(() => {
+    if (!isOpen) return null;
+    const result = generateQrMatrix(visorUrl);
+    if (!result) return null;
+
+    const { size, matrix } = result;
+    const quiet = 2;
+    const paths = [];
+    for (let r = 0; r < size; r += 1) {
+      for (let c = 0; c < size; c += 1) {
+        if (matrix[r][c]) {
+          paths.push(`M${c + quiet},${r + quiet}h1v1h-1z`);
+        }
+      }
+    }
+    return {
+      totalSize: size + quiet * 2,
+      pathD: paths.join('')
+    };
+  }, [isOpen, visorUrl]);
+
+  if (!isOpen) return null;
+
   const handleOpenSimulador = () => {
     window.open(
       '/?visor=cliente',
@@ -44,112 +71,138 @@ export default function VisorModal({ isOpen, onClose }) {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(visorUrl).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2200);
-    }).catch(() => {});
+    navigator.clipboard
+      .writeText(visorUrl)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      })
+      .catch(() => {});
   };
 
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(visorUrl)}&color=0f172a&bgcolor=ffffff&qzone=1`;
+  const qrFallbackOnlineUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+    visorUrl
+  )}&color=0f172a&bgcolor=ffffff&qzone=1`;
 
   return (
     <div className="vm-modal-backdrop" onClick={onClose}>
       <div className="vm-modal-container" onClick={(e) => e.stopPropagation()}>
-        {/* Cabecera del Modal */}
         <header className="vm-modal-header">
           <div className="vm-title-group">
-            <span className="vm-badge-header">SISTEMA POS · NIVEL AWWWARDS</span>
-            <h2 className="vm-modal-title">📱 Pantalla de Cliente Mobile-First</h2>
+            <span className="vm-badge-header">ARQUITECTURA OMNI-SYNC · ZERO-FAIL</span>
+            <h2 className="vm-modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <IconMonitor size={20} />
+              <span>Pantalla de Cliente Mobile-First</span>
+            </h2>
             <p className="vm-modal-subtitle">
-              Sincronización en tiempo real PC ↔ Smartphone para el jurado o cliente
+              Sincronización bidireccional en tiempo real entre Terminal POS y dispositivo del paciente
             </p>
           </div>
-          <button type="button" onClick={onClose} className="vm-close-btn" title="Cerrar modal">
-            ✕
+          <button type="button" onClick={onClose} className="vm-close-btn" title="Cerrar ventana">
+            <IconClose size={15} />
           </button>
         </header>
 
-        {/* Cuerpo del Modal con los 3 Planes de Contingencia */}
         <div className="vm-modal-body">
-
-          {/* PLAN C: Salva-Vidas / Demostración en la Misma PC */}
+          {/* PLAN C: Simulador Local en la Misma PC */}
           <div className="vm-card-plan-c">
-            <div className="vm-plan-c-icon">🖥️</div>
+            <div
+              className="vm-plan-c-icon"
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '12px',
+                background: '#059669',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <IconDesktop size={24} />
+            </div>
             <div className="vm-plan-c-content">
-              <div className="vm-plan-c-tag">PLAN C (RECOMENDADO · CERO FALLOS)</div>
-              <h3 className="vm-plan-c-title">Simulador Móvil en esta PC</h3>
+              <div className="vm-plan-c-tag">CONTINGENCIA LOCAL · LATENCIA 0 MS</div>
+              <h3 className="vm-plan-c-title">Simulador Móvil en esta Estación</h3>
               <p className="vm-plan-c-desc">
-                Abre una ventana flotante vertical con el tamaño exacto de un smartphone (420x880px) al lado derecho. Sincroniza a <strong>0 ms</strong> vía memoria interna sin depender de Wi-Fi.
+                Despliega una ventana vertical con dimensiones móviles exactas (420x880px). Sincroniza a{' '}
+                <strong>0 ms</strong> por canal de memoria interna sin requerir conexión Wi-Fi.
               </p>
               <button
                 type="button"
                 onClick={handleOpenSimulador}
                 className="vm-btn-open-simulador"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
               >
-                🚀 Abrir Simulador Móvil en esta PC
+                <IconMonitor size={15} />
+                <span>Abrir Visor Móvil en esta PC</span>
               </button>
             </div>
           </div>
 
           <div className="vm-divider-text">
-            <span>O ESCANEAR CON CELULAR (PLAN A / B)</span>
+            <span>CONEXIÓN INALÁMBRICA CON SMARTPHONE (PLAN A / B · 100% OFFLINE)</span>
           </div>
 
-          {/* PLAN A / B: QR para el Celular del Profesor */}
+          {/* PLAN A / B: QR generado localmente en SVG (funciona con o sin Internet) */}
           <div className="vm-card-plan-ab">
             <div className="vm-qr-column">
               <div className="vm-qr-box">
-                <img
-                  src={qrImageUrl}
-                  alt="Código QR Visor Cliente"
-                  className="vm-qr-img"
-                  onError={(e) => {
-                    // Fallback a SVG si no hay internet en el laboratorio
-                    e.currentTarget.style.display = 'none';
-                    const fallback = e.currentTarget.nextElementSibling;
-                    if (fallback) fallback.style.display = 'block';
-                  }}
-                />
-                <div className="vm-qr-fallback" style={{ display: 'none' }}>
-                  <svg viewBox="0 0 100 100" className="vm-qr-svg-mock">
-                    <rect width="100" height="100" fill="#f8fafc" />
-                    <rect x="10" y="10" width="28" height="28" fill="#0f172a" />
-                    <rect x="62" y="10" width="28" height="28" fill="#0f172a" />
-                    <rect x="10" y="62" width="28" height="28" fill="#0f172a" />
+                {qrSvgData ? (
+                  <svg
+                    viewBox={`0 0 ${qrSvgData.totalSize} ${qrSvgData.totalSize}`}
+                    width="128"
+                    height="128"
+                    shapeRendering="crispEdges"
+                    role="img"
+                    aria-label="Código QR escaneable del Visor de Cliente"
+                    className="vm-qr-img"
+                  >
+                    <rect width={qrSvgData.totalSize} height={qrSvgData.totalSize} fill="#ffffff" />
+                    <path d={qrSvgData.pathD} fill="#0f172a" />
                   </svg>
-                  <span className="vm-qr-fallback-label">QR Offline</span>
-                </div>
+                ) : (
+                  <img
+                    src={qrFallbackOnlineUrl}
+                    alt="Código QR Visor Cliente"
+                    width="128"
+                    height="128"
+                    className="vm-qr-img"
+                  />
+                )}
               </div>
-              <span className="vm-qr-hint">Apunta con la cámara de tu smartphone</span>
+              <span className="vm-qr-hint">QR local escaneable (sin requerir Internet)</span>
             </div>
 
             <div className="vm-info-column">
-              <span className="vm-info-tag">ENLACE PARA EL SMARTPHONE</span>
+              <span className="vm-info-tag">DIRECCIÓN DE RED LOCAL</span>
               <p className="vm-info-desc">
-                Conecta tu laptop y el celular a la misma red Wi-Fi o Hotspot de Windows.
+                Vincule la estación y el smartphone a la misma red Wi-Fi o Zona con Cobertura Inalámbrica Móvil.
               </p>
 
-              {/* Input de IP / Enlace editable */}
               <div className="vm-url-box">
                 <input
                   type="text"
                   value={visorUrl}
                   readOnly
                   className="vm-url-input"
+                  autoComplete="off"
                 />
                 <button
                   type="button"
                   onClick={handleCopy}
                   className={`vm-btn-copy ${copied ? 'copied' : ''}`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                 >
-                  {copied ? '✓ ¡Copiado!' : '📋 Copiar'}
+                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                  <span>{copied ? 'Copiado' : 'Copiar URL'}</span>
                 </button>
               </div>
 
-              {currentHost === 'localhost' && (
+              {(currentHost === 'localhost' || currentHost === '127.0.0.1') && (
                 <div className="vm-ip-helper">
                   <label htmlFor="vm-ip-input" className="vm-ip-label">
-                    IP local detectada de tu laptop:
+                    Dirección IPv4 detectada del adaptador de red:
                   </label>
                   <div className="vm-ip-row">
                     <input
@@ -159,31 +212,33 @@ export default function VisorModal({ isOpen, onClose }) {
                       value={customIp}
                       onChange={(e) => setCustomIp(e.target.value)}
                       className="vm-ip-input"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                     />
                     <span className="vm-ip-badge">Puerto :5173</span>
                   </div>
-                  <small className="vm-ip-note">
-                    💡 Si estás en el laboratorio, activa la "Zona de cobertura móvil" (Hotspot) en Windows y pon la IP del adaptador aquí.
+                  <small className="vm-ip-note" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <IconShield size={12} />
+                    <span>En modo sin internet, ingrese la IPv4 del Hotspot local de Windows.</span>
                   </small>
                 </div>
               )}
             </div>
           </div>
-
         </div>
 
-        {/* Footer */}
         <footer className="vm-modal-footer">
           <div className="vm-sync-status">
             <span className="vm-pulse-dot" />
-            <span>Sincronización activa vía BroadcastChannel, Storage & RAM Polling (400ms)</span>
+            <span>Canales activos: BroadcastChannel · Storage · API RAM (400ms)</span>
           </div>
           <button type="button" onClick={onClose} className="vm-btn-done">
-            Entendido
+            Cerrar Panel
           </button>
         </footer>
       </div>
     </div>
   );
 }
-

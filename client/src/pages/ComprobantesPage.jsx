@@ -1,172 +1,390 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  IconReceipt,
+  IconSearch,
+  IconEye,
+  IconPrinter,
+  IconClose,
+  IconRefresh,
+  IconAlert
+} from '../components/Icons';
 
 export default function ComprobantesPage() {
   const [ventas, setVentas] = useState([]);
+  const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState(null);
+  const [aviso, setAviso] = useState(null);
   const [detalleVenta, setDetalleVenta] = useState(null);
-  const [cargandoDetalle, setCargandoDetalle] = useState(false);
+  const [cargandoDetalleId, setCargandoDetalleId] = useState(null);
 
-  useEffect(() => {
+  const cargarVentas = useCallback(() => {
     fetch('/api/ventas')
       .then((res) => {
-        if (!res.ok) throw new Error('Error al cargar ventas');
+        if (!res.ok) throw new Error('No fue posible consultar el historial de comprobantes.');
         return res.json();
       })
       .then((data) => {
-        setVentas(data);
+        setVentas(Array.isArray(data) ? data : []);
         setCargando(false);
       })
       .catch((err) => {
-        setError(err.message);
+        setAviso({ tipo: 'error', texto: err.message });
         setCargando(false);
       });
   }, []);
 
+  const handleRefrescarVentas = () => {
+    setCargando(true);
+    cargarVentas();
+  };
+
+  useEffect(() => {
+    cargarVentas();
+  }, [cargarVentas]);
+
+  const metricas = useMemo(() => {
+    let recaudacion = 0;
+    let unidades = 0;
+    for (const v of ventas) {
+      recaudacion += Number(v.total) || 0;
+      unidades += Number(v.total_unidades) || 0;
+    }
+    return {
+      cantidad: ventas.length,
+      recaudacion,
+      unidades
+    };
+  }, [ventas]);
+
+  const ventasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return ventas;
+    return ventas.filter(
+      (v) =>
+        (v.numero_comprobante || '').toLowerCase().includes(q) ||
+        (v.cliente || '').toLowerCase().includes(q) ||
+        (v.metodo_pago || '').toLowerCase().includes(q) ||
+        (v.vendedor || '').toLowerCase().includes(q)
+    );
+  }, [ventas, busqueda]);
+
   const verDetalle = async (id_venta) => {
-    setCargandoDetalle(true);
+    if (cargandoDetalleId) return;
+    setCargandoDetalleId(id_venta);
     try {
       const res = await fetch(`/api/ventas/${id_venta}`);
       const data = await res.json();
       if (data.success) {
         setDetalleVenta(data.venta);
       } else {
-        alert(data.message || 'Error al obtener detalle');
+        setAviso({ tipo: 'error', texto: data.message || 'No se encontró el detalle del comprobante.' });
       }
-    } catch (e) {
-      alert('Error de conexión al obtener comprobante');
+    } catch {
+      setAviso({ tipo: 'error', texto: 'Error de red al recuperar el comprobante electrónico.' });
     } finally {
-      setCargandoDetalle(false);
+      setCargandoDetalleId(null);
     }
   };
 
+  const subtotalDetalle = detalleVenta ? Number((detalleVenta.total / 1.18).toFixed(2)) : 0;
+  const igvDetalle = detalleVenta ? Number((detalleVenta.total - subtotalDetalle).toFixed(2)) : 0;
+
   return (
-    <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ color: '#f8fafc', margin: '0 0 6px 0' }}>🧾 Historial de Comprobantes Emitidos</h1>
-        <p style={{ color: '#94a3b8', margin: 0, fontSize: '14px' }}>
-          Registro correlativo de ventas, tickets de atención y auditoría comercial
-        </p>
-      </div>
-
-      {cargando && <p style={{ color: '#94a3b8' }}>Cargando historial de comprobantes...</p>}
-      {error && <p style={{ color: '#f87171' }}>Error: {error}</p>}
-
-      <div style={{ display: 'grid', gridTemplateColumns: detalleVenta ? '3fr 2fr' : '1fr', gap: '24px' }}>
-        {/* Tabla de Comprobantes */}
-        <div style={{
-          background: '#1e293b',
-          borderRadius: '12px',
-          border: '1px solid #334155',
-          overflow: 'hidden'
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', color: '#f8fafc' }}>
-            <thead>
-              <tr style={{ background: '#0f172a', borderBottom: '1px solid #334155', color: '#94a3b8', fontSize: '13px' }}>
-                <th style={{ padding: '14px 16px' }}>N° Comprobante</th>
-                <th style={{ padding: '14px 16px' }}>Cliente</th>
-                <th style={{ padding: '14px 16px' }}>Fecha y Hora</th>
-                <th style={{ padding: '14px 16px' }}>Total</th>
-                <th style={{ padding: '14px 16px', textAlign: 'center' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ventas.map((v) => (
-                <tr key={v.id_venta} style={{ borderBottom: '1px solid #334155', fontSize: '14px' }}>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 'bold', color: '#38bdf8' }}>
-                    {v.numero_comprobante}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>{v.cliente}</td>
-                  <td style={{ padding: '12px 16px', color: '#94a3b8', fontSize: '13px' }}>
-                    {new Date(v.fecha).toLocaleString()}
-                  </td>
-                  <td style={{ padding: '12px 16px', color: '#10b981', fontWeight: 'bold' }}>
-                    S/ {Number(v.total).toFixed(2)}
-                  </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                    <button
-                      onClick={() => verDetalle(v.id_venta)}
-                      style={{
-                        padding: '6px 12px',
-                        background: '#334155',
-                        border: 'none',
-                        color: '#f8fafc',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      👁️ Ver Detalle
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {ventas.length === 0 && !cargando && (
-                <tr>
-                  <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                    No hay comprobantes registrados aún.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+    <section>
+      <div className="erp-page-header no-print">
+        <div>
+          <div className="erp-eyebrow">
+            <IconReceipt size={14} />
+            <span>Facturación Electrónica · Registro Tributario SUNAT</span>
+          </div>
+          <h1 className="erp-page-title">Historial de Comprobantes Emitidos</h1>
+          <p className="erp-page-subtitle">
+            Auditoría correlativa de boletas electrónicas, métodos de recaudación y desglose de despacho.
+          </p>
         </div>
 
-        {/* Modal / Panel lateral de detalle del comprobante */}
+        <div className="erp-header-controls">
+          <button
+            type="button"
+            onClick={handleRefrescarVentas}
+            disabled={cargando}
+            className="erp-btn erp-btn-secondary"
+          >
+            <IconRefresh size={15} />
+            <span>Actualizar Registro</span>
+          </button>
+        </div>
+      </div>
+
+      {/* KPIs Comerciales */}
+      <div className="erp-kpi-grid no-print">
+        <div className="erp-kpi-card">
+          <span className="erp-kpi-label">Boletas Registradas</span>
+          <span className="erp-kpi-value">{metricas.cantidad}</span>
+          <span className="erp-kpi-foot">Últimas operaciones confirmadas</span>
+        </div>
+
+        <div className="erp-kpi-card">
+          <span className="erp-kpi-label">Importe Total Auditado</span>
+          <span className="erp-kpi-value val-emerald">S/ {metricas.recaudacion.toFixed(2)}</span>
+          <span className="erp-kpi-foot">Incluye I.G.V. 18% de ley</span>
+        </div>
+
+        <div className="erp-kpi-card">
+          <span className="erp-kpi-label">Unidades Dispensadas</span>
+          <span className="erp-kpi-value">{metricas.unidades} und.</span>
+          <span className="erp-kpi-foot">Fármacos entregados en mostrador</span>
+        </div>
+      </div>
+
+      {aviso && (
+        <div className="erp-banner erp-banner-error no-print">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconAlert size={16} />
+            <span>{aviso.texto}</span>
+          </div>
+          <button type="button" className="erp-banner-close" onClick={() => setAviso(null)}>
+            <IconClose size={15} />
+          </button>
+        </div>
+      )}
+
+      <div className="erp-toolbar no-print">
+        <div className="erp-search-box">
+          <span className="erp-search-icon">
+            <IconSearch size={16} />
+          </span>
+          <input
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Filtrar por serie B001, paciente, operador o modalidad de pago..."
+            className="erp-input with-icon"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+          />
+        </div>
+      </div>
+
+      <div className={detalleVenta ? 'comprobantes-split' : ''}>
+        {/* Tabla Principal */}
+        <div className="erp-panel no-print">
+          <div className="erp-table-scroll">
+            <table className="erp-table">
+              <thead>
+                <tr>
+                  <th>N° Comprobante</th>
+                  <th>Paciente / Cliente</th>
+                  <th>Modalidad</th>
+                  <th>Operador</th>
+                  <th>Unid.</th>
+                  <th>Emisión</th>
+                  <th>Importe Total</th>
+                  <th style={{ textAlign: 'right' }}>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cargando ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      Cargando registro correlativo de ventas...
+                    </td>
+                  </tr>
+                ) : ventasFiltradas.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      No existen comprobantes que coincidan con la búsqueda.
+                    </td>
+                  </tr>
+                ) : (
+                  ventasFiltradas.map((v) => {
+                    const seleccionado = detalleVenta?.id_venta === v.id_venta;
+                    return (
+                      <tr
+                        key={v.id_venta}
+                        style={
+                          seleccionado
+                            ? { background: 'rgba(16, 185, 129, 0.08)' }
+                            : undefined
+                        }
+                      >
+                        <td className="erp-mono" style={{ fontWeight: 700, color: 'var(--emerald-400)' }}>
+                          {v.numero_comprobante}
+                        </td>
+                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{v.cliente}</td>
+                        <td>
+                          <span className="erp-badge badge-neutral">{v.metodo_pago || 'Efectivo'}</span>
+                        </td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{v.vendedor}</td>
+                        <td className="erp-mono">{v.total_unidades}</td>
+                        <td className="erp-mono" style={{ fontSize: '0.77rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {new Date(v.fecha).toLocaleString('es-PE', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td className="erp-mono" style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                          S/ {Number(v.total).toFixed(2)}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            disabled={cargandoDetalleId === v.id_venta}
+                            onClick={() => verDetalle(v.id_venta)}
+                            className="erp-btn erp-btn-secondary erp-btn-sm"
+                          >
+                            <IconEye size={14} />
+                            <span>
+                              {cargandoDetalleId === v.id_venta ? 'Abriendo...' : 'Inspeccionar'}
+                            </span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Representación Electrónica del Comprobante */}
         {detalleVenta && (
-          <div style={{
-            background: '#0f172a',
-            borderRadius: '12px',
-            border: '1px solid #10b981',
-            padding: '24px',
-            color: '#f8fafc',
-            height: 'fit-content'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, color: '#10b981' }}>Detalle de Comprobante</h3>
+          <aside
+            className="erp-panel"
+            style={{
+              padding: '22px',
+              borderColor: 'var(--border-emerald)',
+              position: 'sticky',
+              top: '84px'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                paddingBottom: '14px',
+                borderBottom: '1px solid var(--border-subtle)',
+                marginBottom: '14px'
+              }}
+            >
+              <div>
+                <div className="erp-mono" style={{ fontSize: '0.68rem', color: 'var(--emerald-400)', fontWeight: 700 }}>
+                  BOTICA NOVA S.A.C. · RUC 20608493021
+                </div>
+                <h3 style={{ margin: '3px 0 0', fontSize: '1.08rem', fontWeight: 800 }}>
+                  Boleta Electrónica {detalleVenta.numero_comprobante}
+                </h3>
+              </div>
               <button
+                type="button"
                 onClick={() => setDetalleVenta(null)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '18px' }}
+                className="erp-banner-close no-print"
+                aria-label="Cerrar detalle"
               >
-                ✕
+                <IconClose size={16} />
               </button>
             </div>
 
-            <div style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '16px' }}>
-              <div><strong>Comprobante:</strong> <span style={{ color: '#38bdf8' }}>{detalleVenta.numero_comprobante}</span></div>
-              <div><strong>Cliente:</strong> {detalleVenta.cliente}</div>
-              <div><strong>Fecha:</strong> {new Date(detalleVenta.fecha).toLocaleString()}</div>
+            <div
+              style={{
+                display: 'grid',
+                gap: '6px',
+                fontSize: '0.8rem',
+                color: 'var(--text-muted)',
+                marginBottom: '16px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Paciente / Cliente:</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{detalleVenta.cliente}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Modalidad de pago:</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{detalleVenta.metodo_pago}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Operador responsable:</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{detalleVenta.vendedor}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Fecha de emisión:</span>
+                <span className="erp-mono" style={{ color: 'var(--text-secondary)' }}>
+                  {new Date(detalleVenta.fecha).toLocaleString('es-PE')}
+                </span>
+              </div>
             </div>
 
-            <h4 style={{ color: '#cbd5e1', fontSize: '13px', margin: '12px 0 8px 0', borderBottom: '1px solid #334155', paddingBottom: '4px' }}>
-              Medicamentos Despachados:
-            </h4>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+            <div
+              style={{
+                borderTop: '1px dashed var(--border-strong)',
+                borderBottom: '1px dashed var(--border-strong)',
+                padding: '12px 0',
+                marginBottom: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '9px'
+              }}
+            >
               {detalleVenta.items?.map((item) => (
-                <div key={item.id_producto} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span>{item.cantidad}x {item.nombre}</span>
-                  <span style={{ fontWeight: 'bold' }}>S/ {Number(item.subtotal).toFixed(2)}</span>
+                <div
+                  key={item.id_producto}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    gap: '10px',
+                    fontSize: '0.82rem'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {item.cantidad}x {item.nombre}
+                    </div>
+                    <div className="erp-mono" style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                      P.U. S/ {Number(item.precio_unitario).toFixed(2)}
+                    </div>
+                  </div>
+                  <span className="erp-mono" style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                    S/ {Number(item.subtotal).toFixed(2)}
+                  </span>
                 </div>
               ))}
             </div>
 
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              borderTop: '1px solid #334155',
-              paddingTop: '12px',
-              color: '#10b981'
-            }}>
-              <span>Total Pagado:</span>
-              <span>S/ {Number(detalleVenta.total).toFixed(2)}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '16px' }}>
+              <div className="pos-tax-line">
+                <span>Op. Gravada:</span>
+                <span className="erp-mono">S/ {subtotalDetalle.toFixed(2)}</span>
+              </div>
+              <div className="pos-tax-line">
+                <span>I.G.V. (18%):</span>
+                <span className="erp-mono">S/ {igvDetalle.toFixed(2)}</span>
+              </div>
+              <div className="pos-grand-line">
+                <span>Importe Total</span>
+                <span className="pos-grand-amount">S/ {Number(detalleVenta.total).toFixed(2)}</span>
+              </div>
             </div>
-          </div>
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="erp-btn erp-btn-primary no-print"
+              style={{ width: '100%' }}
+            >
+              <IconPrinter size={16} />
+              <span>Imprimir Representación</span>
+            </button>
+          </aside>
         )}
       </div>
-    </div>
+    </section>
   );
 }
-

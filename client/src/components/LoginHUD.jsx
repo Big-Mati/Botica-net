@@ -12,7 +12,7 @@ export default function LoginHUD({ onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [turno, setTurno] = useState('Turno Mañana · 01');
   const [showPassword, setShowPassword] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const audioEnabled = true;
 
   // Feedback State
   const [statusMessage, setStatusMessage] = useState('');
@@ -248,65 +248,108 @@ export default function LoginHUD({ onLoginSuccess }) {
   }, [lockoutSeconds]);
 
   // =========================================================================
-  // 6. VALIDACIÓN Y ACCESO AL TERMINAL POS
+  // 6. VALIDACIÓN REAL CONTRA MYSQL (POST /api/login) + FALLBACK LOCAL
   // =========================================================================
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const registrarIntentoFallido = useCallback(() => {
+    const nextAttempts = failedAttempts + 1;
+    setFailedAttempts(nextAttempts);
+
+    if (nextAttempts >= 3) {
+      setLockoutSeconds(15);
+      setStatusType('locked');
+      setStatusMessage('Demasiados intentos fallidos. Bloqueo temporal por 15s.');
+      setIsShaking(true);
+      playErrorTone();
+      setTimeout(() => setIsShaking(false), 450);
+    } else {
+      setStatusType('error');
+      setStatusMessage(`Credenciales incorrectas (intento ${nextAttempts} de 3).`);
+      setIsShaking(true);
+      playErrorTone();
+      setTimeout(() => setIsShaking(false), 450);
+
+      if (passInputRef.current) {
+        passInputRef.current.focus();
+        passInputRef.current.select();
+      }
+    }
+  }, [failedAttempts, playErrorTone]);
+
+  const confirmarAccesoExitoso = useCallback(
+    (operador) => {
+      setStatusType('success');
+      setStatusMessage('Identidad validada. Habilitando terminal POS...');
+      playUnlockChime();
+      setIsSuccessing(true);
+
+      const sesionData = {
+        id_vendedor: operador?.id_vendedor || 1,
+        usuario: operador?.usuario || 'vendedor',
+        nombre: operador?.nombre || 'Carlos Mendoza',
+        rol: operador?.rol || 'Químico Farmacéutico',
+        turno: turno,
+        timestamp: Date.now(),
+      };
+
+      try {
+        sessionStorage.setItem('botica_sesion_activa', JSON.stringify(sesionData));
+      } catch {
+        // Fallback seguro
+      }
+
+      setTimeout(() => {
+        if (onLoginSuccess) {
+          onLoginSuccess(sesionData);
+        }
+      }, 500);
+    },
+    [turno, playUnlockChime, onLoginSuccess]
+  );
+
   const executeLogin = useCallback(
-    (customUser, customPass) => {
-      if (lockoutSeconds > 0) return;
+    async (customUser, customPass) => {
+      if (lockoutSeconds > 0 || isSubmitting || isSuccessing) return;
 
       const u = (customUser !== undefined ? customUser : usuario).trim().toLowerCase();
       const p = (customPass !== undefined ? customPass : password).trim();
 
-      if (u === 'vendedor' && p === '123') {
-        setStatusType('success');
-        setStatusMessage('Identidad validada. Habilitando terminal POS...');
-        playUnlockChime();
-        setIsSuccessing(true);
+      if (!u || !p) {
+        registrarIntentoFallido();
+        return;
+      }
 
-        const sesionData = {
-          usuario: 'vendedor',
-          nombre: 'Operador Principal',
-          turno: turno,
-          timestamp: Date.now(),
-        };
-
-        try {
-          sessionStorage.setItem('botica_sesion_activa', JSON.stringify(sesionData));
-        } catch {
-          // Fallback seguro
-        }
-
-        setTimeout(() => {
-          if (onLoginSuccess) {
-            onLoginSuccess(sesionData);
-          }
-        }, 500);
-      } else {
-        const nextAttempts = failedAttempts + 1;
-        setFailedAttempts(nextAttempts);
-
-        if (nextAttempts >= 3) {
-          setLockoutSeconds(15);
-          setStatusType('locked');
-          setStatusMessage('Demasiados intentos fallidos. Bloqueo temporal por 15s.');
-          setIsShaking(true);
-          playErrorTone();
-          setTimeout(() => setIsShaking(false), 450);
+      setIsSubmitting(true);
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usuario: u, clave: p })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          confirmarAccesoExitoso(data.operador);
         } else {
-          setStatusType('error');
-          setStatusMessage(`Credenciales incorrectas (intento ${nextAttempts} de 3).`);
-          setIsShaking(true);
-          playErrorTone();
-          setTimeout(() => setIsShaking(false), 450);
-
-          if (passInputRef.current) {
-            passInputRef.current.focus();
-            passInputRef.current.select();
-          }
+          registrarIntentoFallido();
         }
+      } catch {
+        // Contingencia offline local si la red no está disponible
+        if (u === 'vendedor' && p === '123') {
+          confirmarAccesoExitoso({
+            id_vendedor: 1,
+            usuario: 'vendedor',
+            nombre: 'Carlos Mendoza',
+            rol: 'Químico Farmacéutico'
+          });
+        } else {
+          registrarIntentoFallido();
+        }
+      } finally {
+        setIsSubmitting(false);
       }
     },
-    [usuario, password, turno, lockoutSeconds, failedAttempts, playUnlockChime, playErrorTone, onLoginSuccess]
+    [usuario, password, lockoutSeconds, isSubmitting, isSuccessing, confirmarAccesoExitoso, registrarIntentoFallido]
   );
 
   // =========================================================================
@@ -400,7 +443,7 @@ export default function LoginHUD({ onLoginSuccess }) {
       onMouseLeave={handleStageMouseLeave}
     >
       {/* =====================================================================
-          🌿 LADO IZQUIERDO (53%): ESCAPARATE CINEMÁTICO LIMPIO & TELEMETRÍA
+          LADO IZQUIERDO (53%): ESCAPARATE CINEMÁTICO LIMPIO & TELEMETRÍA
           ===================================================================== */}
       <section className="split-left-stage">
         {/* Videos de Fondo Alternados (video1.mp4 a 0.88x y video2.mp4) con Transición Fluida */}
@@ -428,7 +471,7 @@ export default function LoginHUD({ onLoginSuccess }) {
           src="/video2.mp4"
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           className={`split-left-video ${activeVideoIdx === 1 ? 'video-active' : 'video-dormant'}`}
           onEnded={handleVideo2Ended}
           onError={() => {
@@ -495,7 +538,7 @@ export default function LoginHUD({ onLoginSuccess }) {
       </section>
 
       {/* =====================================================================
-          🤍 LADO DERECHO (47%): QUIRÓFANO BLANCO PORCELANA LIMPIO & CENTRADO
+          LADO DERECHO (47%): QUIRÓFANO BLANCO PORCELANA LIMPIO & CENTRADO
           ===================================================================== */}
       <section className="split-right-stage">
         {/* Cuerpo del Formulario Centrado */}
@@ -689,10 +732,10 @@ export default function LoginHUD({ onLoginSuccess }) {
             {/* Stagger 4: Botón de Acceso Principal */}
             <button
               type="submit"
-              disabled={lockoutSeconds > 0}
+              disabled={lockoutSeconds > 0 || isSubmitting || isSuccessing}
               className="surgical-submit-btn"
             >
-              <span>Iniciar sesión en caja</span>
+              <span>{isSubmitting ? 'Verificando credenciales...' : 'Iniciar sesión en caja'}</span>
               <span className="surgical-btn-arrow">→</span>
             </button>
           </form>
@@ -702,10 +745,14 @@ export default function LoginHUD({ onLoginSuccess }) {
             type="button"
             className="surgical-demo-bar stagger-4"
             onClick={triggerDemoAutoLogin}
-            disabled={lockoutSeconds > 0}
+            disabled={lockoutSeconds > 0 || isSubmitting || isSuccessing}
           >
             <span className="surgical-demo-left">
-              <span className="surgical-demo-bolt">⚡</span>
+              <span className="surgical-demo-bolt" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+              </span>
               <span>Acceso rápido de demostración</span>
             </span>
             <kbd className="surgical-kbd-key">F9</kbd>

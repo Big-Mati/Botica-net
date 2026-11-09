@@ -31,13 +31,20 @@ export default function Navbar({ sesion, alertasCount = 0, onOpenVisor, onLock }
       <div className="erp-topbar-inner">
         <div className="erp-topbar-left">
           <NavLink to="/" className="erp-brand-block" end>
-            <img
-              src="/favicon.svg"
-              alt="Botica Nova"
-              width="30"
-              height="30"
-              className="erp-brand-logo"
-            />
+            <div className="erp-brand-logo-container">
+              <div className="erp-brand-logo-glow" />
+              <span className="erp-brand-particle p1" />
+              <span className="erp-brand-particle p2" />
+              <span className="erp-brand-particle p3" />
+              <span className="erp-brand-particle p4" />
+              <img
+                src="/favicon.svg"
+                alt="Botica Nova"
+                width="30"
+                height="30"
+                className="erp-brand-logo"
+              />
+            </div>
             <div className="erp-brand-text">
               <span className="erp-brand-name">Botica Nova</span>
               <span className="erp-brand-sub">ERP · POS Clínico</span>

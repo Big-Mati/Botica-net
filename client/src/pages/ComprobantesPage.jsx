@@ -42,6 +42,21 @@ export default function ComprobantesPage() {
     cargarVentas();
   }, [cargarVentas]);
 
+  // Atajo de teclado: Cerrar visor de comprobante con tecla Escape
+  useEffect(() => {
+    if (!detalleVenta) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setDetalleVenta(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [detalleVenta]);
+
   const metricas = useMemo(() => {
     let recaudacion = 0;
     let unidades = 0;

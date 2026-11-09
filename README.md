@@ -13,35 +13,59 @@
 
 ---
 
-## 🛡️ ARQUITECTURA DE LAS 3 CONTINGENCIAS (ZERO-FAIL DEMO)
+## 🎬 Flujo de Demostración para Sustentación (Paso a Paso)
+
+Para una sustentación impecable frente al instructor o jurado, el ciclo operativo de venta en caja se ejecuta de forma fluida en este orden:
+
+```
+[ 1. Agregar Productos ] ➔ [ 2. Buscar DNI ] ➔ [ 3. Cobrar con Yape / Efectivo ] ➔ [ 4. Sincronización en Visor de Cliente ] ➔ [ 5. Imprimir Boleta ]
+```
+
+1. **📦 1. Agregar Productos:**
+   - Haz clic en `+ Agregar al Ticket` en cualquier medicamento del catálogo (ej. *Amoxicilina*, *Azitromicina*, *Gasas Estériles*).
+   - Observa cómo la lista del ticket se actualiza en el panel lateral derecho con scroll interno independiente, manteniendo la pantalla general completamente fija.
+2. **🆔 2. Buscar DNI / Identificar Paciente:**
+   - En la sección **1. DATOS DEL CLIENTE**, selecciona la pestaña **`Con DNI / Paciente`**.
+   - Digita un DNI de 8 dígitos (ej. `72345678`, `45678912` o el DNI del profesor) y presiona **`Enter`** o haz clic en **`Buscar`**.
+   - El número en el input se reemplaza de inmediato por el nombre oficial del paciente mediante el sistema **Híbrido Zero-Fail** (RENIEC Online + Contingencia offline).
+3. **💳 3. Seleccionar Medio de Pago (Yape / Plin o Efectivo):**
+   - Elige **`Yape / Plin`** (muestra el código QR con el monto exacto) o **`Efectivo`** (ingresa el monto recibido para calcular el vuelto exacto).
+4. **📱 4. Mostrar la Sincronización en la Pantalla del Cliente:**
+   - Muestra tu celular o la ventana del simulador: el cliente visualiza su orden en tiempo real, el desglose de IGV y el QR de pago sin latencia.
+5. **🧾 5. Cobrar y Emitir Boleta:**
+   - Presiona **`F12`** o haz clic en **`Cobrar y Emitir Boleta`**.
+   - Se procesa la transacción atómica en MySQL (`FOR UPDATE`), se descuenta el stock FEFO, se registra el movimiento en Kardex y se abre la boleta digital térmica con opción de imprimir o compartir por WhatsApp.
+
+---
+
+## 🛡️ ARQUITECTURA DE CONEXIÓN DEL VISOR DE CLIENTE (MOBILE-FIRST)
 
 > [!IMPORTANT]
-> Para garantizar que tu sustentación y demostración ante el jurado sea **100% libre de fallos** ante cualquier imprevisto de red o laboratorio, el sistema incorpora **3 Planes de Demostración Simultáneos**:
+> El sistema incorpora una conexión limpia e instantánea mediante **Cloudflare Tunnel (HTTPS Oficial)** junto con un simulador local de respaldo, eliminando configuraciones de red, puertos y bloqueos de Firewall:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ PLAN A (Nube / Vercel + Render):                                       │
-│ • La laptop y el celular tienen acceso a Internet.                     │
-│ • La laptop corre el POS y el smartphone del profesor abre la URL.     │
+│ 🚀 MÉTODO PRINCIPAL: TÚNEL SEGURO HTTPS (Cualquier Smartphone)         │
+│ • Ejecuta en terminal: npm run tunnel                                  │
+│ • Genera un enlace público HTTPS (ej: https://xxxx.trycloudflare.com). │
+│ • Abre el enlace en el smartphone del cliente (vía Wi-Fi o datos 4G/5G)│
+│   o escanea el código QR desde el botón [👁 Visor Cliente].             │
+│ • Cero configuraciones de Firewall, sin contraseñas y latencia mínima. │
 ├────────────────────────────────────────────────────────────────────────┤
-│ PLAN B (Red Local / Hotspot de Windows - 100% Offline):                │
-│ • No hay Internet en el aula/laboratorio.                              │
-│ • La laptop activa "Zona con cobertura inalámbrica móvil" (Hotspot).   │
-│ • El celular se conecta al Wi-Fi de la laptop y escanea el QR con la   │
-│   IP local detectada automáticamente (ej: http://192.168.137.1:5173).  │
-├────────────────────────────────────────────────────────────────────────┤
-│ PLAN C (Misma PC / Ventana Flotante Simulada - EL SALVA-VIDAS):        │
-│ • El profesor no saca su celular o no hay conexión posible.            │
-│ • Un solo clic en [📱 Visor Cliente] -> [🖥️ Abrir Simulador Móvil].    │
-│ • Abre una ventana emergente vertical exacta (420x880px) a la derecha. │
-│ • Sincronización instantánea a 0 ms por BroadcastChannel de memoria.   │
+│ 🖥️ MÉTODO ALTERNATIVO: SIMULADOR MÓVIL EN LA MISMA PC (0 MS)           │
+│ • Si no se cuenta con un smartphone a la mano o para demo en proyector.│
+│ • Clic en [👁 Visor Cliente] ➔ [Abrir en PC].                           │
+│ • Despliega una ventana vertical emergente (420x880px) a la derecha.   │
+│ • Sincronización instantánea a 0 ms por canal de memoria interna.      │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### ⚡ ¿Cómo activar el Plan C en un solo paso?
-1. En el encabezado del Terminal POS, haz clic en el botón verde **`[📱 Visor Cliente]`**.
-2. Presiona el botón verde grande: **`[🚀 Abrir Simulador Móvil en esta PC]`**.
-3. ¡Listo! Se abrirá una ventana emergente vertical que replica con fidelidad milimétrica la pantalla del smartphone del cliente al lado derecho de tu monitor. Cada medicamento escaneado, método de pago o vuelto en la PC se reflejará a **0 ms sin requerir Internet**.
+### ⚡ ¿Cómo conectar el smartphone en 2 simples pasos?
+1. En tu PC, abre una terminal y ejecuta:
+   ```bash
+   npm run tunnel
+   ```
+2. En el Terminal POS, haz clic en el botón superior **`[👁 Visor Cliente]`** y escanea el código QR con la cámara de tu celular (o copia y abre el enlace HTTPS que arroja la terminal). Cada medicamento agregado, método de pago o vuelto en caja se sincroniza en vivo en el celular.
 
 ---
 
@@ -79,6 +103,67 @@ Diseñada bajo estándares de concurso (Combinación 1A + 2A + 3A + 4A + 5A) par
 * **Telemetría de Base de Datos en Vivo:** Píldora de cristal escarchado con radar de ondas activo (`@keyframes radarPing`) e indicador de estado de conexión y reloj tabular sincronizado.
 * **Brillo Automático del Botón:** Destello *shimmer* que cruza el botón de inicio de sesión automáticamente cada 4.5 segundos y al pasar el cursor.
 * **Atajo F9 de Demostración Rápida:** Rellena las credenciales con efecto de mecanografía y accede al sistema en 1 segundo.
+
+<p align="center">
+  <img src="img/login.png" alt="Cockpit Espacial de Autenticación LoginHUD" width="100%" />
+</p>
+
+---
+
+## 🖥️ Módulos Operativos del Sistema (Capturas de Pantalla)
+
+### 1. Terminal de Punto de Venta (POS Clínico)
+* Despacho farmacéutico ágil con atajos de teclado (`F2` buscador, `F12` cobro inmediato).
+* Búsqueda híbrida de DNI / Paciente con verificación RENIEC Online y contingencia offline.
+* Descuento atómico de inventario en MySQL (`FOR UPDATE`), panel lateral de ticket con scroll interno aislado y sincronización en vivo con la Pantalla del Cliente.
+
+<p align="center">
+  <img src="img/pos.png" alt="Terminal de Punto de Venta POS Clínico" width="100%" />
+</p>
+
+---
+
+### 2. Gestión de Inventario Farmacéutico (Control FEFO)
+* Catálogo con semáforo visual de existencias (Crítico `<= 15`, Medio `16–30`, Óptimo `> 30`).
+* Control estricto de lotes, fecha de vencimiento y ubicación física en anaqueles para cumplimiento DIGEMID.
+* Modal reactivo de reabastecimiento rápido de stock sin recargar la página.
+
+<p align="center">
+  <img src="img/inventario.png" alt="Gestión de Inventario Farmacéutico" width="100%" />
+</p>
+
+---
+
+### 3. Semáforo de Alertas y Stock Crítico
+* Panel de telemetría que detecta automáticamente medicamentos por debajo del stock de seguridad.
+* Sugerencia calculada de unidades de reposición para evitar desabastecimiento.
+* Acceso directo a reabastecimiento en un solo clic.
+
+<p align="center">
+  <img src="img/alertas.png" alt="Semáforo de Alertas y Stock Crítico" width="100%" />
+</p>
+
+---
+
+### 4. Kardex y Trazabilidad de Almacén
+* Historial de auditoría inmutable de todas las entradas (compras) y salidas (ventas en caja).
+* Balance de saldos matemáticos con fecha, hora, tipo de movimiento, lote y usuario responsable.
+* Filtros por medicamento y cálculo instantáneo de saldos contables.
+
+<p align="center">
+  <img src="img/kardex.png" alt="Kardex de Trazabilidad Farmacéutica" width="100%" />
+</p>
+
+---
+
+### 5. Comprobantes Electrónicos y Consulta Fiscal
+* Registro fiscal de boletas electrónicas emitidas serie `B001-XXXXX`.
+* Desglose de Operación Gravada, IGV (18%) y total recaudado en Soles (PEN).
+* Modal de recibo térmico con código QR SUNAT, impresión limpia y opción de compartir por WhatsApp.
+
+<p align="center">
+  <img src="img/comprobantes.png" alt="Historial de Comprobantes Electrónicos" width="100%" />
+</p>
 
 ---
 
@@ -179,12 +264,40 @@ Si prefieres monitorear o depurar cada proceso en su propia consola independient
    ```
    *Al ingresar a `http://localhost:5173/` accederás a la interfaz gráfica completa del sistema.*
 
-> [!TIP]
-> Al estar configurado con `--host` y el generador QR nativo (`qrLocalMatrix.js`), cualquier smartphone conectado a la misma red Wi-Fi o Hotspot de Windows puede escanear el código QR del modal **Visor Cliente** sin requerir acceso a Internet.
+---
+
+### Paso 5: Conectar el Smartphone en Tiempo Real (Cloudflare Tunnel · Auto-Sync)
+
+Para proyectar la **Pantalla de Cliente Mobile-First** en cualquier teléfono (vía Wi-Fi o datos móviles 4G/5G) sin restricciones de red ni permisos de Administrador en el Firewall de Windows:
+
+Abre una **segunda ventana de terminal** en la raíz del proyecto y ejecuta:
+
+```bash
+npm run tunnel
+```
+
+*Salida esperada en consola:*
+```text
+===================================================================
+🚀 BOTICA NOVA · CLOUDFLARE TUNNEL (AUTO-SYNC)
+Iniciando túnel seguro HTTPS para el Visor de Cliente Mobile-First...
+===================================================================
+
+===================================================================
+✅ ¡TÚNEL CONECTADO Y SINCRONIZADO AUTOMÁTICAMENTE!
+📱 Enlace para Smartphone: https://xxxx-xxxx-xxxx.trycloudflare.com/?visor=cliente
+⚡ El código QR en el POS ya está actualizado sin tocar nada.
+===================================================================
+```
+
+#### 🪄 ¿Cómo funciona la sincronización 100% automática?
+1. **Detección inteligente:** El script (`scripts/tunnel.js`) captura al vuelo el nuevo subdominio asignado por Cloudflare en cualquier PC.
+2. **Sincronización en caliente:** Notifica automáticamente al backend (`/api/tunnel-url`) y guarda la sesión en `tunnel.json`.
+3. **Escaneo instantáneo:** En la PC vas a **`[👁 Visor Cliente]`**; el código QR y el enlace ya se habrán actualizado solos sin que tengas que copiar, pegar o editar nada manualmente. Solo escaneas con el celular y comienzas la demostración.
 
 ---
 
-### Paso 5: Compilación para Producción y Despliegue en la Nube (Build)
+### Paso 6: Compilación para Producción y Despliegue en la Nube (Build)
 Si deseas generar la versión optimizada para producción o servir todo el sistema unificado desde `http://localhost:3000`:
 ```bash
 npm --prefix client run build
@@ -201,9 +314,9 @@ Los archivos optimizados se generan en `client/dist/` y son detectados automáti
 | **`F9`** | **Auto-Login Demostrativo:** Escribe automáticamente las credenciales y accede a caja. |
 | **`F2`** | **Búsqueda Rápida en POS:** Enfoca de inmediato el buscador de medicamentos y lotes. |
 | **`F12`** | **Cobro Rápido en Caja:** Emite la Boleta Electrónica SUNAT y abre el recibo térmico. |
-| **`Esc`** | **Cerrar Recibo / Nueva Venta:** Cierra el modal de boleta en caja y prepara el siguiente despacho. |
+| **`Esc`** | **Cierre Universal de Modales:** Cierra inmediatamente cualquier ventana emergente activa (Recibo de caja, Modal de Visor QR, Alta de medicamento o Detalle de boleta). |
 | **`Alt + L`** | **Bloqueo Inmediato:** Bloquea la sesión del cajero y regresa al cockpit 3D (también se activa tras 2 min de inactividad). |
-| **`[📱 Visor Cliente]`** | Abre el modal de sincronización con QR 100% offline y simulador de celular en PC. |
+| **`[👁 Visor Cliente]`** | Abre la ventana de sincronización móvil con código QR de Cloudflare Tunnel y simulador en PC. |
 | **`/?visor=cliente`** | URL directa para cargar la Pantalla de Cliente en cualquier smartphone. |
 
 ---

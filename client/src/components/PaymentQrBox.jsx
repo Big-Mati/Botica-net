@@ -55,7 +55,14 @@ function QrImageInner({ walletKey, size, showDemoHint }) {
             height: 'auto',
             maxHeight: `${Math.round(size * 1.34)}px`,
             objectFit: 'contain',
-            display: 'block'
+            display: 'block',
+            ...(isYape
+              ? {
+                  transform: 'scale(1.38) translateY(6%)',
+                  transformOrigin: 'center 40%',
+                  transition: 'transform 0.2s ease'
+                }
+              : {})
           }}
         />
       </div>

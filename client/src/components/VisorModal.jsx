@@ -10,34 +10,58 @@ import {
 } from './Icons';
 import './VisorModal.css';
 
-export default function VisorModal({ isOpen, onClose }) {
-  const [localIp, setLocalIp] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [customIp, setCustomIp] = useState('');
+const DEFAULT_TUNNEL_URL = 'https://felt-pants-toddler-cult.trycloudflare.com';
 
+export default function VisorModal({ isOpen, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const [autoSync, setAutoSync] = useState(false);
+  const [tunnelBase, setTunnelBase] = useState(() => {
+    return localStorage.getItem('botica_tunnel_url') || DEFAULT_TUNNEL_URL;
+  });
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Detección 100% automática del túnel activo desde el backend o la sesión
   useEffect(() => {
     if (!isOpen) return;
 
-    fetch('/api/visor-estado')
-      .then((r) => r.json())
+    if (window.location.origin.includes('trycloudflare.com')) {
+      setTunnelBase(window.location.origin);
+      setAutoSync(true);
+      return;
+    }
+
+    fetch('/api/tunnel-url')
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data.localIp && data.localIp !== 'localhost') {
-          setLocalIp(data.localIp);
-          setCustomIp(data.localIp);
+        if (data && data.tunnelUrl) {
+          setTunnelBase(data.tunnelUrl);
+          setAutoSync(true);
         }
       })
       .catch(() => {});
   }, [isOpen]);
 
-  const currentHost = window.location.hostname;
-  const currentPort = window.location.port ? `:${window.location.port}` : '';
-  const currentProtocol = window.location.protocol;
+  // Atajo de teclado: Cerrar modal con tecla Escape
+  useEffect(() => {
+    if (!isOpen) return;
 
-  let visorUrl = `${window.location.origin}/?visor=cliente`;
-  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    const ipToUse = customIp.trim() || localIp || 'localhost';
-    visorUrl = `${currentProtocol}//${ipToUse}${currentPort}/?visor=cliente`;
-  }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const visorUrl = useMemo(() => {
+    const clean = (tunnelBase || '').trim().replace(/\/+$/, '');
+    if (!clean) return `${DEFAULT_TUNNEL_URL}/?visor=cliente`;
+    if (clean.includes('?visor=')) return clean;
+    return `${clean}/?visor=cliente`;
+  }, [tunnelBase]);
 
   const qrSvgData = useMemo(() => {
     if (!isOpen) return null;
@@ -80,6 +104,11 @@ export default function VisorModal({ isOpen, onClose }) {
       .catch(() => {});
   };
 
+  const handleSaveTunnel = (newVal) => {
+    setTunnelBase(newVal);
+    localStorage.setItem('botica_tunnel_url', newVal.trim());
+  };
+
   const qrFallbackOnlineUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
     visorUrl
   )}&color=0f172a&bgcolor=ffffff&qzone=1`;
@@ -89,13 +118,13 @@ export default function VisorModal({ isOpen, onClose }) {
       <div className="vm-modal-container" onClick={(e) => e.stopPropagation()}>
         <header className="vm-modal-header">
           <div className="vm-title-group">
-            <span className="vm-badge-header">ARQUITECTURA OMNI-SYNC · ZERO-FAIL</span>
+            <span className="vm-badge-header">ARQUITECTURA OMNI-SYNC · CLOUDFLARE TUNNEL</span>
             <h2 className="vm-modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <IconMonitor size={20} />
               <span>Pantalla de Cliente Mobile-First</span>
             </h2>
             <p className="vm-modal-subtitle">
-              Sincronización bidireccional en tiempo real entre Terminal POS y dispositivo del paciente
+              Sincronización bidireccional en tiempo real entre Terminal POS y smartphone del cliente
             </p>
           </div>
           <button type="button" onClick={onClose} className="vm-close-btn" title="Cerrar ventana">
@@ -104,135 +133,114 @@ export default function VisorModal({ isOpen, onClose }) {
         </header>
 
         <div className="vm-modal-body">
-          {/* PLAN C: Simulador Local en la Misma PC */}
-          <div className="vm-card-plan-c">
-            <div
-              className="vm-plan-c-icon"
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                background: '#059669',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <IconDesktop size={24} />
-            </div>
-            <div className="vm-plan-c-content">
-              <div className="vm-plan-c-tag">CONTINGENCIA LOCAL · LATENCIA 0 MS</div>
-              <h3 className="vm-plan-c-title">Simulador Móvil en esta Estación</h3>
-              <p className="vm-plan-c-desc">
-                Despliega una ventana vertical con dimensiones móviles exactas (420x880px). Sincroniza a{' '}
-                <strong>0 ms</strong> por canal de memoria interna sin requerir conexión Wi-Fi.
-              </p>
-              <button
-                type="button"
-                onClick={handleOpenSimulador}
-                className="vm-btn-open-simulador"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}
-              >
-                <IconMonitor size={15} />
-                <span>Abrir Visor Móvil en esta PC</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="vm-divider-text">
-            <span>CONEXIÓN INALÁMBRICA CON SMARTPHONE (PLAN A / B · 100% OFFLINE)</span>
-          </div>
-
-          {/* PLAN A / B: QR generado localmente en SVG (funciona con o sin Internet) */}
-          <div className="vm-card-plan-ab">
-            <div className="vm-qr-column">
-              <div className="vm-qr-box">
-                {qrSvgData ? (
-                  <svg
-                    viewBox={`0 0 ${qrSvgData.totalSize} ${qrSvgData.totalSize}`}
-                    width="128"
-                    height="128"
-                    shapeRendering="crispEdges"
-                    role="img"
-                    aria-label="Código QR escaneable del Visor de Cliente"
-                    className="vm-qr-img"
-                  >
-                    <rect width={qrSvgData.totalSize} height={qrSvgData.totalSize} fill="#ffffff" />
-                    <path d={qrSvgData.pathD} fill="#0f172a" />
-                  </svg>
-                ) : (
-                  <img
-                    src={qrFallbackOnlineUrl}
-                    alt="Código QR Visor Cliente"
-                    width="128"
-                    height="128"
-                    className="vm-qr-img"
-                  />
-                )}
-              </div>
-              <span className="vm-qr-hint">QR local escaneable (sin requerir Internet)</span>
+          {/* TARJETA PRINCIPAL: TÚNEL SEGURO HTTPS PARA SMARTPHONE */}
+          <div className="vm-card-tunnel">
+            <div className="vm-tunnel-badge-row">
+              <span className="vm-tunnel-badge">
+                <span className="vm-pulse-dot" />
+                <span>TÚNEL SEGURO HTTPS · ACCESO MÓVIL DIRECTO</span>
+              </span>
+              <span className="vm-tunnel-network">Compatible con Wi-Fi, 4G y 5G</span>
             </div>
 
-            <div className="vm-info-column">
-              <span className="vm-info-tag">DIRECCIÓN DE RED LOCAL</span>
-              <p className="vm-info-desc">
-                Vincule la estación y el smartphone a la misma red Wi-Fi o Zona con Cobertura Inalámbrica Móvil.
-              </p>
-
-              <div className="vm-url-box">
-                <input
-                  type="text"
-                  value={visorUrl}
-                  readOnly
-                  className="vm-url-input"
-                  autoComplete="off"
-                />
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className={`vm-btn-copy ${copied ? 'copied' : ''}`}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                >
-                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                  <span>{copied ? 'Copiado' : 'Copiar URL'}</span>
-                </button>
-              </div>
-
-              {(currentHost === 'localhost' || currentHost === '127.0.0.1') && (
-                <div className="vm-ip-helper">
-                  <label htmlFor="vm-ip-input" className="vm-ip-label">
-                    Dirección IPv4 detectada del adaptador de red:
-                  </label>
-                  <div className="vm-ip-row">
-                    <input
-                      id="vm-ip-input"
-                      type="text"
-                      placeholder="Ej: 192.168.1.35"
-                      value={customIp}
-                      onChange={(e) => setCustomIp(e.target.value)}
-                      className="vm-ip-input"
-                      autoComplete="off"
-                      autoCorrect="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
+            <div className="vm-card-tunnel-content">
+              {/* Columna Izquierda: QR Escaneable */}
+              <div className="vm-qr-column">
+                <div className="vm-qr-box">
+                  {qrSvgData ? (
+                    <svg
+                      viewBox={`0 0 ${qrSvgData.totalSize} ${qrSvgData.totalSize}`}
+                      width="140"
+                      height="140"
+                      shapeRendering="crispEdges"
+                      role="img"
+                      aria-label="Código QR escaneable del Visor de Cliente"
+                      className="vm-qr-img"
+                    >
+                      <rect width={qrSvgData.totalSize} height={qrSvgData.totalSize} fill="#ffffff" />
+                      <path d={qrSvgData.pathD} fill="#0f172a" />
+                    </svg>
+                  ) : (
+                    <img
+                      src={qrFallbackOnlineUrl}
+                      alt="Código QR Visor Cliente"
+                      width="140"
+                      height="140"
+                      className="vm-qr-img"
                     />
-                    <span className="vm-ip-badge">Puerto :5173</span>
-                  </div>
-                  <small className="vm-ip-note" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <IconShield size={12} />
-                    <span>En modo sin internet, ingrese la IPv4 del Hotspot local de Windows.</span>
-                  </small>
+                  )}
                 </div>
-              )}
+                <span className="vm-qr-hint">Escanee con la cámara de su smartphone</span>
+              </div>
+
+              {/* Columna Derecha: Enlace HTTPS y Botón Copiar */}
+              <div className="vm-info-column">
+                <span className="vm-info-tag">ENLACE OFICIAL DE SINCRONIZACIÓN</span>
+                <p className="vm-info-desc">
+                  Abra este enlace en su smartphone para proyectar el visor en tiempo real con cifrado SSL y sin bloqueos de Firewall.
+                </p>
+
+                <div className="vm-url-box">
+                  <input
+                    type="text"
+                    value={visorUrl}
+                    readOnly={!isEditing}
+                    onChange={(e) => handleSaveTunnel(e.target.value)}
+                    className="vm-url-input"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className={`vm-btn-copy ${copied ? 'copied' : ''}`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  >
+                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                    <span>{copied ? '¡Copiado!' : 'Copiar URL'}</span>
+                  </button>
+                </div>
+
+                <div className="vm-tunnel-actions-row">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="vm-link-edit"
+                  >
+                    {isEditing ? '✓ Guardar enlace' : '✏️ Cambiar URL del túnel'}
+                  </button>
+                  <span className="vm-tunnel-cli-hint">
+                    Comando en terminal: <code>npm run tunnel</code>
+                  </span>
+                </div>
+              </div>
             </div>
+          </div>
+
+          {/* SIMULADOR COMPACTO EN ESTA PC */}
+          <div className="vm-card-simulator-compact">
+            <div className="vm-sim-left">
+              <IconDesktop size={18} />
+              <div>
+                <strong>Simulador Móvil en esta PC</strong>
+                <span>Despliega una ventana emergente vertical (420x880px) al lado de tu pantalla</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenSimulador}
+              className="vm-btn-sim-compact"
+            >
+              <IconMonitor size={14} />
+              <span>Abrir en PC</span>
+            </button>
           </div>
         </div>
 
         <footer className="vm-modal-footer">
           <div className="vm-sync-status">
             <span className="vm-pulse-dot" />
-            <span>Canales activos: BroadcastChannel · Storage · API RAM (400ms)</span>
+            <span>Canales activos: Cloudflare HTTPS · RAM API Sync (400ms)</span>
           </div>
           <button type="button" onClick={onClose} className="vm-btn-done">
             Cerrar Panel

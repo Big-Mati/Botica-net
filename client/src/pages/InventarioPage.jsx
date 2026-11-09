@@ -67,6 +67,21 @@ export default function InventarioPage({ onInventoryMutated }) {
     cargarDatos();
   }, [cargarDatos]);
 
+  // Atajo de teclado: Cerrar modal de alta con tecla Escape
+  useEffect(() => {
+    if (!modalAbierto) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !guardandoProd) {
+        e.preventDefault();
+        setModalAbierto(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalAbierto, guardandoProd]);
+
   const kpis = useMemo(() => {
     let unidades = 0;
     let valorizacion = 0;

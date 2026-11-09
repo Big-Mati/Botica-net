@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "client": "npm --prefix client run dev",
+    "tunnel": "node scripts/tunnel.js",
     "dev": "concurrently -n \"API,VITE\" -c \"green,cyan\" \"npm start\" \"npm run client\""
   },
   "keywords": [],

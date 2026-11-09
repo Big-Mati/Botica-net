@@ -26,16 +26,98 @@ export default function PosPage({ sesion, onInventoryMutated }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [avisoUI, setAvisoUI] = useState(null); // { tipo: 'success' | 'warn' | 'error', texto, detalle }
+  const [desvaneciendoAviso, setDesvaneciendoAviso] = useState(false);
+  const avisoTimerRef = useRef(null);
+  const fadeTimerRef = useRef(null);
+
+  // Auto-desvanecimiento lento y profesional para notificaciones tipo Toast
+  useEffect(() => {
+    if (!avisoUI) {
+      setDesvaneciendoAviso(false);
+      return;
+    }
+
+    setDesvaneciendoAviso(false);
+    if (avisoTimerRef.current) clearTimeout(avisoTimerRef.current);
+    if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+
+    // Inicia desvanecimiento suave a los 4.2 segundos
+    avisoTimerRef.current = setTimeout(() => {
+      setDesvaneciendoAviso(true);
+    }, 4200);
+
+    // Se desmonta tras completar la transición de 800ms
+    fadeTimerRef.current = setTimeout(() => {
+      setAvisoUI(null);
+      setDesvaneciendoAviso(false);
+    }, 5000);
+
+    return () => {
+      if (avisoTimerRef.current) clearTimeout(avisoTimerRef.current);
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    };
+  }, [avisoUI]);
+
+  const handleMouseEnterAviso = () => {
+    if (avisoTimerRef.current) clearTimeout(avisoTimerRef.current);
+    if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    setDesvaneciendoAviso(false);
+  };
+
+  const handleMouseLeaveAviso = () => {
+    avisoTimerRef.current = setTimeout(() => {
+      setDesvaneciendoAviso(true);
+    }, 2500);
+    fadeTimerRef.current = setTimeout(() => {
+      setAvisoUI(null);
+      setDesvaneciendoAviso(false);
+    }, 3300);
+  };
 
   // Filtros de despacho rápido
   const [busqueda, setBusqueda] = useState('');
   const [categoriaActiva, setCategoriaActiva] = useState('TODAS');
   const searchInputRef = useRef(null);
   const dniInputRef = useRef(null);
+  const ticketPanelRef = useRef(null);
+
+  // Aislamiento estricto de scroll: dentro del panel de ticket solo se scrollea su lista de productos
+  useEffect(() => {
+    const panel = ticketPanelRef.current;
+    if (!panel) return;
+
+    const handleWheel = (e) => {
+      const cartList = panel.querySelector('.pos-cart-list');
+
+      if (cartList && cartList.contains(e.target)) {
+        const { scrollTop, scrollHeight, clientHeight } = cartList;
+        const delta = e.deltaY;
+        const isAtTop = scrollTop <= 0;
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+
+        // Evitar scroll chaining a la ventana cuando llega al borde
+        if ((delta < 0 && isAtTop) || (delta > 0 && isAtBottom)) {
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Cursor en cualquier otra zona del panel de ticket: bloquear scroll de la página
+      e.preventDefault();
+    };
+
+    panel.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      panel.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   // Estados de cobro claros y sincronización con Visor de Cliente
   const [modoCliente, setModoCliente] = useState('GENERAL'); // 'GENERAL' | 'DOCUMENTO'
   const [clienteDoc, setClienteDoc] = useState('');
+  const [buscandoDni, setBuscandoDni] = useState(false);
+  const [dniVerificado, setDniVerificado] = useState(null); // { dni, origen }
   const [metodoPago, setMetodoPago] = useState('Efectivo'); // 'Efectivo' | 'Yape / Plin' | 'Tarjeta'
   const [mostrarQrEnCaja, setMostrarQrEnCaja] = useState(false);
   const [efectivoRecibido, setEfectivoRecibido] = useState('');
@@ -346,6 +428,60 @@ export default function PosPage({ sesion, onInventoryMutated }) {
     };
   }, [esperandoConfirmacionVisor, emitirComprobante]);
 
+  const handleBuscarDni = useCallback(async () => {
+    const raw = String(clienteDoc || '').trim();
+    const soloNumeros = raw.replace(/\D/g, '');
+
+    if (!raw) {
+      if (dniInputRef.current) dniInputRef.current.focus();
+      return;
+    }
+
+    if (soloNumeros.length !== 8) {
+      setAvisoUI({
+        tipo: 'warn',
+        texto: 'Ingrese un número de DNI válido de 8 dígitos para consultar.',
+        detalle: 'O escriba directamente el nombre o RUC del paciente.'
+      });
+      return;
+    }
+
+    setBuscandoDni(true);
+    try {
+      const resp = await fetch(`/api/consulta-dni/${soloNumeros}`);
+      const data = await resp.json();
+
+      if (resp.ok && data.success && data.nombre) {
+        setClienteDoc(data.nombre);
+        setDniVerificado({
+          dni: soloNumeros,
+          origen: data.origen || 'RENIEC'
+        });
+        setAvisoUI({
+          tipo: 'success',
+          texto: `Paciente identificado: ${data.nombre}`,
+          detalle: data.origen === 'RENIEC_ONLINE'
+            ? `DNI ${soloNumeros} validado en tiempo real con RENIEC.`
+            : `DNI ${soloNumeros} validado con la libreta de contingencia offline (Zero-Fail).`
+        });
+      } else {
+        setAvisoUI({
+          tipo: 'error',
+          texto: 'No se pudo verificar el DNI ingresado.',
+          detalle: data.message || 'Verifique el número o ingrese el nombre del paciente manualmente.'
+        });
+      }
+    } catch {
+      setAvisoUI({
+        tipo: 'error',
+        texto: 'Error de conexión con el servicio de consulta DNI.',
+        detalle: 'Puede escribir el nombre del paciente directamente en el campo.'
+      });
+    } finally {
+      setBuscandoDni(false);
+    }
+  }, [clienteDoc]);
+
   const cerrarModalRecibo = useCallback(() => {
     setMostrarReciboCaja(false);
     setTimeout(() => {
@@ -386,10 +522,17 @@ export default function PosPage({ sesion, onInventoryMutated }) {
   // =========================================================================
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && mostrarReciboCaja) {
-        e.preventDefault();
-        cerrarModalRecibo();
-        return;
+      if (e.key === 'Escape') {
+        if (mostrarReciboCaja) {
+          e.preventDefault();
+          cerrarModalRecibo();
+          return;
+        }
+        if (esperandoConfirmacionVisor) {
+          e.preventDefault();
+          setEsperandoConfirmacionVisor(false);
+          return;
+        }
       }
       if (e.key === 'F12') {
         e.preventDefault();
@@ -403,7 +546,7 @@ export default function PosPage({ sesion, onInventoryMutated }) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [carrito.length, emitirComprobante, mostrarReciboCaja, cerrarModalRecibo]);
+  }, [carrito.length, emitirComprobante, mostrarReciboCaja, cerrarModalRecibo, esperandoConfirmacionVisor]);
 
   // =========================================================================
   // GESTIÓN DE LÍNEAS DEL TICKET
@@ -495,85 +638,109 @@ export default function PosPage({ sesion, onInventoryMutated }) {
 
   return (
     <section>
-      {/* Cabecera Operativa */}
-      <div className="erp-page-header no-print">
-        <div>
-          <div className="erp-eyebrow">
-            <IconReceipt size={14} />
-            <span>Despacho Farmacéutico · Control de Caja</span>
-          </div>
-          <h1 className="erp-page-title">Terminal de Punto de Venta (POS)</h1>
-          <p className="erp-page-subtitle">
-            Descuento automático de stock FEFO y emisión inmediata de boleta electrónica.
-          </p>
-        </div>
+      {/* Notificación Flotante Tipo Toast (Zero-Layout Shift, se desvanece suavemente) */}
+      {avisoUI && (
+        <aside
+          className={`erp-floating-toast no-print toast-${avisoUI.tipo || 'info'} ${
+            desvaneciendoAviso ? 'is-fading' : ''
+          }`}
+          onMouseEnter={handleMouseEnterAviso}
+          onMouseLeave={handleMouseLeaveAviso}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="erp-toast-glow" />
+          <div className="erp-toast-body">
+            <div className="erp-toast-icon-wrap">
+              {avisoUI.tipo === 'success' ? (
+                <IconCheck size={18} />
+              ) : (
+                <IconAlert size={18} />
+              )}
+            </div>
 
-        <div className="erp-header-controls">
-          {comprobanteEmitido && (
+            <div className="erp-toast-content">
+              <div className="erp-toast-title">{avisoUI.texto}</div>
+              {avisoUI.detalle && (
+                <div className="erp-toast-detail">{avisoUI.detalle}</div>
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={() => setMostrarReciboCaja(true)}
-              className="erp-btn erp-btn-secondary erp-btn-sm"
+              className="erp-toast-close"
+              onClick={() => {
+                if (avisoTimerRef.current) clearTimeout(avisoTimerRef.current);
+                if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+                setAvisoUI(null);
+              }}
+              aria-label="Cerrar notificación"
             >
-              <IconReceipt size={14} />
-              <span>Ver Recibo {comprobanteEmitido.numero}</span>
+              <IconClose size={14} />
             </button>
-          )}
-          <span className="erp-badge badge-ok erp-mono">
-            <span className="erp-badge-dot" />
-            <span>Catálogo activo · {metricasCatalogo.totalSkus} medicamentos</span>
-          </span>
-          {metricasCatalogo.criticos > 0 && (
-            <span className="erp-badge badge-warn erp-mono">
-              <IconAlert size={13} />
-              <span>{metricasCatalogo.criticos} en stock crítico</span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Notificación No Bloqueante */}
-      {avisoUI && (
-        <div
-          className={`erp-banner no-print ${
-            avisoUI.tipo === 'success'
-              ? 'erp-banner-success'
-              : avisoUI.tipo === 'warn'
-              ? 'erp-banner-warn'
-              : 'erp-banner-error'
-          }`}
-        >
-          <div>
-            <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px' }}>
-              {avisoUI.tipo === 'success' ? <IconCheck size={16} /> : <IconAlert size={16} />}
-              <span>{avisoUI.texto}</span>
-            </div>
-            {avisoUI.detalle && (
-              <div style={{ fontSize: '0.78rem', opacity: 0.85, marginTop: '3px' }}>
-                {avisoUI.detalle}
-              </div>
-            )}
           </div>
-          <button
-            type="button"
-            className="erp-banner-close"
-            onClick={() => setAvisoUI(null)}
-            aria-label="Cerrar notificación"
-          >
-            <IconClose size={16} />
-          </button>
-        </div>
-      )}
 
-      {error && (
-        <div className="erp-banner erp-banner-error no-print">
-          <span>Error de conexión con MySQL/Express: {error}</span>
-        </div>
+          <div className="erp-toast-progress-bar">
+            <div className="erp-toast-progress-fill" />
+          </div>
+        </aside>
       )}
 
       <div className="pos-workspace-grid no-print">
-        {/* COLUMNA IZQUIERDA: Buscador + Categorías + Cuadrícula de Fármacos */}
-        <div>
+        {/* COLUMNA IZQUIERDA: Encabezado + Telemetría Apilada + Buscador + Categorías + Fármacos */}
+        <div className="pos-catalog-column">
+          {/* Cabecera Operativa del Catálogo */}
+          <div className="erp-page-header no-print" style={{ marginBottom: '14px', alignItems: 'flex-start' }}>
+            <div>
+              <div className="erp-eyebrow">
+                <IconReceipt size={14} />
+                <span>Despacho Farmacéutico · Control de Caja</span>
+              </div>
+              <h1 className="erp-page-title" style={{ fontSize: '1.45rem', marginBottom: '3px' }}>
+                Terminal de Punto de Venta (POS)
+              </h1>
+              <p className="erp-page-subtitle" style={{ margin: 0, fontSize: '0.84rem' }}>
+                Descuento automático de stock FEFO y emisión inmediata de boleta electrónica.
+              </p>
+            </div>
+
+            {/* Badges de Telemetría Apilados Verticalmente */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-end', flexShrink: 0 }}>
+              <span className="erp-badge badge-ok erp-mono" style={{ whiteSpace: 'nowrap' }}>
+                <span className="erp-badge-dot" />
+                <span>Catálogo: {metricasCatalogo.totalSkus} fármacos</span>
+              </span>
+              {metricasCatalogo.criticos > 0 ? (
+                <span className="erp-badge badge-warn erp-mono" style={{ whiteSpace: 'nowrap' }}>
+                  <IconAlert size={12} />
+                  <span>{metricasCatalogo.criticos} en stock crítico</span>
+                </span>
+              ) : (
+                <span className="erp-badge badge-ok erp-mono" style={{ whiteSpace: 'nowrap' }}>
+                  <IconCheck size={12} />
+                  <span>Stock 100% óptimo</span>
+                </span>
+              )}
+              {comprobanteEmitido && (
+                <button
+                  type="button"
+                  onClick={() => setMostrarReciboCaja(true)}
+                  className="erp-btn erp-btn-secondary erp-btn-sm"
+                  style={{ marginTop: '2px' }}
+                >
+                  <IconReceipt size={13} />
+                  <span>Ver Recibo {comprobanteEmitido.numero}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <div className="erp-banner erp-banner-error no-print">
+              <span>Error de conexión con MySQL/Express: {error}</span>
+            </div>
+          )}
+
           <div className="erp-toolbar">
             <div className="erp-search-box" style={{ maxWidth: '100%' }}>
               <span className="erp-search-icon">
@@ -730,7 +897,7 @@ export default function PosPage({ sesion, onInventoryMutated }) {
         </div>
 
         {/* COLUMNA DERECHA: Ticket de Venta Claro y Estructurado */}
-        <aside className="pos-ticket-panel">
+        <aside ref={ticketPanelRef} className="pos-ticket-panel">
           {/* Encabezado del Ticket */}
           <div className="pos-ticket-header">
             <h2 className="pos-ticket-title">
@@ -773,7 +940,10 @@ export default function PosPage({ sesion, onInventoryMutated }) {
                 type="button"
                 role="tab"
                 aria-selected={modoCliente === 'GENERAL'}
-                onClick={() => setModoCliente('GENERAL')}
+                onClick={() => {
+                  setModoCliente('GENERAL');
+                  setDniVerificado(null);
+                }}
                 className={`pos-client-tab ${modoCliente === 'GENERAL' ? 'active' : ''}`}
               >
                 Público General
@@ -795,40 +965,91 @@ export default function PosPage({ sesion, onInventoryMutated }) {
             </div>
 
             {modoCliente === 'DOCUMENTO' && (
-              <div className="pos-dni-input-wrap">
-                <input
-                  ref={dniInputRef}
-                  id="pos-cliente-input"
-                  type="text"
-                  value={clienteDoc}
-                  onChange={(e) => setClienteDoc(e.target.value)}
-                  placeholder="Ingrese DNI, RUC o nombre del paciente..."
-                  className="erp-input"
-                  maxLength={100}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                />
-                {clienteDoc && (
+              <div className="pos-dni-control-group">
+                <div className="pos-dni-search-row">
+                  <div className="pos-dni-input-wrap">
+                    <input
+                      ref={dniInputRef}
+                      id="pos-cliente-input"
+                      type="text"
+                      value={clienteDoc}
+                      onChange={(e) => {
+                        setClienteDoc(e.target.value);
+                        if (dniVerificado) setDniVerificado(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleBuscarDni();
+                        }
+                      }}
+                      placeholder="DNI (8 dígitos) o paciente..."
+                      className="erp-input pos-dni-field"
+                      maxLength={100}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                    />
+                    {clienteDoc && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClienteDoc('');
+                          setDniVerificado(null);
+                          if (dniInputRef.current) dniInputRef.current.focus();
+                        }}
+                        className="pos-dni-clear"
+                        aria-label="Limpiar documento"
+                      >
+                        <IconClose size={13} />
+                      </button>
+                    )}
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => {
-                      setClienteDoc('');
-                      if (dniInputRef.current) dniInputRef.current.focus();
-                    }}
-                    className="pos-dni-clear"
-                    aria-label="Limpiar documento"
+                    onClick={handleBuscarDni}
+                    disabled={buscandoDni || !clienteDoc.trim()}
+                    className={`pos-dni-search-btn ${buscandoDni ? 'is-loading' : ''} ${dniVerificado ? 'is-verified' : ''}`}
+                    title="Buscar DNI en RENIEC o contingencia offline (Presione Enter)"
                   >
-                    <IconClose size={13} />
+                    {buscandoDni ? (
+                      <>
+                        <span className="pos-dni-spinner" aria-hidden="true" />
+                        <span>Buscando...</span>
+                      </>
+                    ) : dniVerificado ? (
+                      <>
+                        <IconCheck size={14} />
+                        <span>Verificado</span>
+                      </>
+                    ) : (
+                      <>
+                        <IconSearch size={14} />
+                        <span>Buscar</span>
+                      </>
+                    )}
                   </button>
+                </div>
+
+                {dniVerificado && (
+                  <div className="pos-dni-status-badge">
+                    <IconCheck size={12} />
+                    <span>
+                      DNI <strong>{dniVerificado.dni}</strong> ·{' '}
+                      {dniVerificado.origen === 'RENIEC_ONLINE'
+                        ? 'RENIEC Online'
+                        : 'Libreta Zero-Fail'}
+                    </span>
+                  </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* PASO 2: Productos Agregados */}
-          <div className="pos-step-block">
+          {/* PASO 2: Productos Agregados con Scroll Interno Propio */}
+          <div className="pos-step-block pos-step-cart-section">
             <div className="pos-step-label-row">
               <span className="pos-step-label">2. Productos en Ticket</span>
               {carrito.length > 0 && (
@@ -1085,7 +1306,7 @@ export default function PosPage({ sesion, onInventoryMutated }) {
               <kbd className="erp-kbd">F12</kbd>
             </button>
 
-            {esperandoConfirmacionVisor ? (
+            {esperandoConfirmacionVisor && (
               <div className="pos-visor-waiting-bar">
                 <div className="pos-visor-waiting-info">
                   <span className="pos-visor-pulse" />
@@ -1099,17 +1320,6 @@ export default function PosPage({ sesion, onInventoryMutated }) {
                   Cancelar
                 </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={iniciarCobroEnVisor}
-                disabled={carrito.length === 0 || procesandoVenta}
-                className="pos-secondary-visor-btn"
-                title="Envía el QR o monto a la Pantalla del Cliente para que confirme el pago desde su celular"
-              >
-                <IconMonitor size={14} />
-                <span>Enviar cobro a Pantalla del Cliente</span>
-              </button>
             )}
           </div>
         </aside>

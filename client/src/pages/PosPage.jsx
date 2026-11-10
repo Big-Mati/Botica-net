@@ -2,6 +2,13 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { getProductImage } from '../utils/productImages';
 import PaymentQrBox from '../components/PaymentQrBox';
 import {
+  playScanBeep,
+  playSuccessChime,
+  playAlertTone,
+  playYapeSound,
+  playNavTick
+} from '../utils/audioFeedback';
+import {
   IconSearch,
   IconPlus,
   IconMinus,
@@ -77,9 +84,32 @@ export default function PosPage({ sesion, onInventoryMutated }) {
   // Filtros de despacho rápido
   const [busqueda, setBusqueda] = useState('');
   const [categoriaActiva, setCategoriaActiva] = useState('TODAS');
+  const [selectedProdIndex, setSelectedProdIndex] = useState(-1);
   const searchInputRef = useRef(null);
   const dniInputRef = useRef(null);
   const ticketPanelRef = useRef(null);
+  const gridContainerRef = useRef(null);
+
+  // Auto-enfoque de F2 cuando se navega con ?focusSearch=true o evento custom
+  useEffect(() => {
+    const enfocar = () => {
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          searchInputRef.current.select();
+        }
+      }, 50);
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('focusSearch') === 'true') {
+      enfocar();
+      window.history.replaceState({}, '', '/');
+    }
+
+    window.addEventListener('enfocar-buscador-pos', enfocar);
+    return () => window.removeEventListener('enfocar-buscador-pos', enfocar);
+  }, []);
 
   // Aislamiento estricto de scroll: dentro del panel de ticket solo se scrollea su lista de productos
   useEffect(() => {
@@ -320,6 +350,10 @@ export default function PosPage({ sesion, onInventoryMutated }) {
 
           setComprobanteEmitido(comp);
           setMostrarReciboCaja(true);
+          playSuccessChime();
+          if (String(metodoRegistrado).toLowerCase().includes('yape')) {
+            playYapeSound();
+          }
           setAvisoUI({
             tipo: 'success',
             texto: `Boleta Electrónica ${data.comprobante} emitida correctamente (${metodoRegistrado}).`,
@@ -549,10 +583,11 @@ export default function PosPage({ sesion, onInventoryMutated }) {
   }, [carrito.length, emitirComprobante, mostrarReciboCaja, cerrarModalRecibo, esperandoConfirmacionVisor]);
 
   // =========================================================================
-  // GESTIÓN DE LÍNEAS DEL TICKET
+  // GESTIÓN DE LÍNEAS DEL TICKET & SONIDOS CLÍNICOS
   // =========================================================================
   const agregarAlCarrito = (producto) => {
     if (producto.stock <= 0) {
+      playAlertTone();
       setAvisoUI({
         tipo: 'error',
         texto: `Sin existencias disponibles para "${producto.nombre}".`
@@ -567,12 +602,14 @@ export default function PosPage({ sesion, onInventoryMutated }) {
     const existente = carrito.find((item) => item.id_producto === producto.id_producto);
     if (existente) {
       if (existente.cantidad >= producto.stock) {
+        playAlertTone();
         setAvisoUI({
           tipo: 'warn',
           texto: `Stock máximo alcanzado para "${producto.nombre}" (${producto.stock} und. disponibles).`
         });
         return;
       }
+      playScanBeep();
       setCarrito(
         carrito.map((item) =>
           item.id_producto === producto.id_producto
@@ -585,6 +622,7 @@ export default function PosPage({ sesion, onInventoryMutated }) {
         )
       );
     } else {
+      playScanBeep();
       setCarrito([
         ...carrito,
         {
@@ -609,14 +647,19 @@ export default function PosPage({ sesion, onInventoryMutated }) {
         .map((item) => {
           if (item.id_producto !== id_producto) return item;
           const nuevaCant = item.cantidad + delta;
-          if (nuevaCant <= 0) return null;
+          if (nuevaCant <= 0) {
+            playScanBeep();
+            return null;
+          }
           if (nuevaCant > maxStock) {
+            playAlertTone();
             setAvisoUI({
               tipo: 'warn',
               texto: `Tope de stock físico alcanzado (${maxStock} und.).`
             });
             return item;
           }
+          playScanBeep();
           return {
             ...item,
             cantidad: nuevaCant,
@@ -750,7 +793,61 @@ export default function PosPage({ sesion, onInventoryMutated }) {
                 ref={searchInputRef}
                 type="search"
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={(e) => {
+                  setBusqueda(e.target.value);
+                  setSelectedProdIndex(-1);
+                }}
+                onKeyDown={(e) => {
+                  if (productosFiltrados.length === 0) return;
+
+                  // Calcular cuántas columnas tiene la cuadrícula en vivo
+                  let cols = 4;
+                  if (gridContainerRef.current) {
+                    const gridWidth = gridContainerRef.current.clientWidth;
+                    // minmax(212px, 1fr) + gap: 14px
+                    cols = Math.max(1, Math.floor((gridWidth + 14) / (212 + 14)));
+                  }
+
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    playNavTick();
+                    setSelectedProdIndex((prev) => {
+                      if (prev === -1) return 0;
+                      const next = prev + cols;
+                      return next < productosFiltrados.length ? next : prev;
+                    });
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    playNavTick();
+                    setSelectedProdIndex((prev) => {
+                      if (prev === -1) return 0;
+                      const next = prev - cols;
+                      return next >= 0 ? next : prev;
+                    });
+                  } else if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    playNavTick();
+                    setSelectedProdIndex((prev) => {
+                      const next = prev < productosFiltrados.length - 1 ? prev + 1 : 0;
+                      return next;
+                    });
+                  } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    playNavTick();
+                    setSelectedProdIndex((prev) => {
+                      const next = prev > 0 ? prev - 1 : productosFiltrados.length - 1;
+                      return next;
+                    });
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const targetProd = selectedProdIndex >= 0
+                      ? productosFiltrados[selectedProdIndex]
+                      : productosFiltrados[0];
+                    if (targetProd) {
+                      agregarAlCarrito(targetProd);
+                    }
+                  }
+                }}
                 placeholder="Buscar medicamento, principio activo, lote o anaquel (Atajo F2)..."
                 className="erp-input with-icon"
                 autoComplete="off"
@@ -783,10 +880,11 @@ export default function PosPage({ sesion, onInventoryMutated }) {
               Ningún medicamento coincide con el criterio de filtrado actual.
             </div>
           ) : (
-            <div className="pos-products-grid">
-              {productosFiltrados.map((prod) => {
+            <div className="pos-products-grid" ref={gridContainerRef}>
+              {productosFiltrados.map((prod, idx) => {
                 const imgProd = getProductImage(prod.nombre, prod.id_producto);
                 const itemEnTicket = carrito.find((c) => c.id_producto === prod.id_producto);
+                const isKeyFocused = idx === selectedProdIndex;
                 const stockNum = Number(prod.stock) || 0;
                 const agotado = stockNum <= 0;
                 const esRojo = stockNum <= 15;
@@ -801,7 +899,19 @@ export default function PosPage({ sesion, onInventoryMutated }) {
                 return (
                   <article
                     key={prod.id_producto}
-                    className={`pos-product-card${claseSemaforo}${itemEnTicket ? ' in-cart' : ''}`}
+                    className={`pos-product-card${claseSemaforo}${itemEnTicket ? ' in-cart' : ''}${isKeyFocused ? ' keyboard-focused' : ''}`}
+                    ref={(el) => {
+                      if (isKeyFocused && el) {
+                        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                      }
+                    }}
+                    onMouseMove={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const y = e.clientY - rect.top;
+                      e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
+                      e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
+                    }}
                   >
                     <div>
                       <div className="pos-card-top">

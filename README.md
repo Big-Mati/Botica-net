@@ -97,6 +97,24 @@ Diseñada bajo estándares de concurso (Combinación 1A + 2A + 3A + 4A + 5A) par
 
 ---
 
+## ⚡ Guía Completa de Accesos Rápidos (Atajos de Teclado)
+
+Botica Nova fue diseñado bajo estándares de alta velocidad operativa farmacéutica (estilo *Linear* y terminales POS profesionales). Permite despachar medicamentos y administrar la botica completamente desde el teclado:
+
+| Atajo de Teclado | Alcance | Acción que Ejecuta |
+| :---: | :--- | :--- |
+| **`Ctrl + K`** (o `Cmd + K`) | **Global (Cualquier pantalla)** | Abre la **Command Palette** de navegación flotante con sonido aero y auto-scroll |
+| **`Alt + L`** | **Global (Cualquier pantalla)** | **Bloqueo Inmediato de Caja**: Cierra la sesión temporalmente y resguarda la recaudación |
+| **`F2`** | **Global / Terminal POS** | **Buscador Inmediato**: Salta directamente al buscador del catálogo desde cualquier pantalla |
+| **`↓` / `↑` + `Enter`** | **Buscador POS (`F2`)** | **Navegación en Catálogo**: Baja/sube entre medicamentos con sonido táctico y agrega al ticket con `Enter` |
+| **`F12`** | **Terminal POS (Caja)** | **Cobrar y Emitir Boleta**: Dispara la transacción SQL ACID y abre el recibo térmico oficial |
+| **`Enter` (en DNI)** | **Terminal POS (Caja)** | Dispara la **Consulta RENIEC Zero-Fail** del paciente (8 dígitos) |
+| **`F9`** | **Cockpit de Login** | **Acceso Demo Rápido**: Autocompleta credenciales con efecto de máquina de escribir y loguea |
+| **`Esc` (Escape)** | **En todo el sistema** | Cierra cualquier modal abierto (Recibo fiscal, Drawer de edición, Visor de cliente o Command Palette) |
+| **`↓` / `↑` + `Enter`** | **Command Palette** | Navega entre comandos con sonido de tick suave y ejecuta la acción seleccionada |
+
+---
+
 ## 🔐 Cockpit Espacial de Autenticación (`LoginHUD`)
 
 * **Video Cinemático en Bucle:** Alternancia suave entre videos de fondo (`video1.mp4` y `video2.mp4`).

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import PosPage from './pages/PosPage';
 import InventarioPage from './pages/InventarioPage';
@@ -9,10 +9,90 @@ import ComprobantesPage from './pages/ComprobantesPage';
 import LoginHUD from './components/LoginHUD';
 import CustomerDisplay from './components/CustomerDisplay';
 import VisorModal from './components/VisorModal';
+import CommandPalette from './components/CommandPalette';
 import './App.css';
 
-function OperatorShell() {
+function MainLayout({ sesion, onLock, alertasCount, actualizarConteoAlertas }) {
   const [mostrarModalVisor, setMostrarModalVisor] = useState(false);
+  const [mostrarCommandPalette, setMostrarCommandPalette] = useState(false);
+  const navigate = useNavigate();
+
+  // Atajos globales de teclado SPA: Ctrl+K, Alt+L y F2 Global
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setMostrarCommandPalette((prev) => !prev);
+      } else if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+        e.preventDefault();
+        onLock();
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        // Si no estamos en la raíz '/', navegar al terminal POS SPA
+        if (window.location.pathname !== '/') {
+          navigate('/?focusSearch=true');
+        } else {
+          // Si ya estamos en POS, disparar evento de foco inmediato
+          window.dispatchEvent(new CustomEvent('enfocar-buscador-pos'));
+        }
+      }
+    };
+
+    const handleCustomOpen = () => setMostrarCommandPalette(true);
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    window.addEventListener('abrir-command-palette', handleCustomOpen);
+
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+      window.removeEventListener('abrir-command-palette', handleCustomOpen);
+    };
+  }, [navigate, onLock]);
+
+  return (
+    <div className="erp-app-shell">
+      <Navbar
+        sesion={sesion}
+        alertasCount={alertasCount}
+        onOpenVisor={() => setMostrarModalVisor(true)}
+        onLock={onLock}
+      />
+
+      <main className="erp-main-stage">
+        <Routes>
+          <Route
+            path="/"
+            element={<PosPage sesion={sesion} onInventoryMutated={actualizarConteoAlertas} />}
+          />
+          <Route
+            path="/inventario"
+            element={<InventarioPage onInventoryMutated={actualizarConteoAlertas} />}
+          />
+          <Route
+            path="/alertas"
+            element={<AlertasPage onInventoryMutated={actualizarConteoAlertas} />}
+          />
+          <Route path="/kardex" element={<KardexPage />} />
+          <Route path="/comprobantes" element={<ComprobantesPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+
+      <VisorModal
+        isOpen={mostrarModalVisor}
+        onClose={() => setMostrarModalVisor(false)}
+      />
+
+      <CommandPalette
+        isOpen={mostrarCommandPalette}
+        onClose={() => setMostrarCommandPalette(false)}
+        onOpenVisor={() => setMostrarModalVisor(true)}
+        onLock={onLock}
+      />
+    </div>
+  );
+}
+
+function OperatorShell() {
   const [alertasCount, setAlertasCount] = useState(0);
 
   const [sesion, setSesion] = useState(() => {
@@ -50,18 +130,6 @@ function OperatorShell() {
     }
   }, [sesion, actualizarConteoAlertas]);
 
-  // Atajo global de teclado: Alt + L para bloquear terminal (PLAN.md 2.A)
-  useEffect(() => {
-    const handleGlobalKeyDown = (e) => {
-      if (e.altKey && (e.key === 'l' || e.key === 'L')) {
-        e.preventDefault();
-        bloquearPantalla();
-      }
-    };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [bloquearPantalla]);
-
   // Watchdog de Auto-Bloqueo por Inactividad (120,000 ms = 2 minutos - PLAN.md 2.A)
   useEffect(() => {
     if (!sesion) return;
@@ -91,39 +159,12 @@ function OperatorShell() {
 
   return (
     <BrowserRouter>
-      <div className="erp-app-shell">
-        <Navbar
-          sesion={sesion}
-          alertasCount={alertasCount}
-          onOpenVisor={() => setMostrarModalVisor(true)}
-          onLock={bloquearPantalla}
-        />
-
-        <main className="erp-main-stage">
-          <Routes>
-            <Route
-              path="/"
-              element={<PosPage sesion={sesion} onInventoryMutated={actualizarConteoAlertas} />}
-            />
-            <Route
-              path="/inventario"
-              element={<InventarioPage onInventoryMutated={actualizarConteoAlertas} />}
-            />
-            <Route
-              path="/alertas"
-              element={<AlertasPage onInventoryMutated={actualizarConteoAlertas} />}
-            />
-            <Route path="/kardex" element={<KardexPage />} />
-            <Route path="/comprobantes" element={<ComprobantesPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-
-        <VisorModal
-          isOpen={mostrarModalVisor}
-          onClose={() => setMostrarModalVisor(false)}
-        />
-      </div>
+      <MainLayout
+        sesion={sesion}
+        onLock={bloquearPantalla}
+        alertasCount={alertasCount}
+        actualizarConteoAlertas={actualizarConteoAlertas}
+      />
     </BrowserRouter>
   );
 }

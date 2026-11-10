@@ -895,6 +895,7 @@ app.get('/api/categorias', async (req, res) => {
 
 // =========================================================================
 // ENDPOINT 7: Trazabilidad y Auditoría de Inventario (GET /api/kardex)
+// Orden estrictamente matemático y cronológico por ID de movimiento
 // =========================================================================
 app.get('/api/kardex', async (req, res) => {
     try {
@@ -905,7 +906,7 @@ app.get('/api/kardex', async (req, res) => {
             FROM movimientos_kardex m
             INNER JOIN productos p ON m.id_producto = p.id_producto
             LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
-            ORDER BY m.fecha DESC
+            ORDER BY m.id_movimiento DESC
             LIMIT 50;
         `;
         const [rows] = await pool.query(sql);

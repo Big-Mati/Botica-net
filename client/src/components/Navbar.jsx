@@ -108,6 +108,23 @@ export default function Navbar({ sesion, alertasCount = 0, onOpenVisor, onLock }
 
           <button
             type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('abrir-command-palette'))}
+            className="erp-cmd-btn"
+            style={{
+              background: 'rgba(30, 41, 59, 0.6)',
+              borderColor: 'rgba(255, 255, 255, 0.12)',
+              gap: '6px'
+            }}
+            title="Abrir Command Palette de navegación rápida (Ctrl + K)"
+          >
+            <span>Buscar</span>
+            <kbd className="erp-kbd" style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#34d399' }}>
+              Ctrl+K
+            </kbd>
+          </button>
+
+          <button
+            type="button"
             onClick={onLock}
             className="erp-cmd-btn erp-cmd-lock"
             title="Bloquear terminal activa (Atajo Alt + L)"

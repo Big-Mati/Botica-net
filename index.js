@@ -84,6 +84,14 @@ app.get('/api', apiExplorerHandler);
 function normalizarProducto(row) {
     const stock = Number(row.stock);
     const stockMinimo = Number(row.stock_minimo);
+    let fechaVencStr = null;
+    if (row.fecha_vencimiento) {
+        if (row.fecha_vencimiento instanceof Date) {
+            fechaVencStr = row.fecha_vencimiento.toISOString().slice(0, 10);
+        } else {
+            fechaVencStr = String(row.fecha_vencimiento).slice(0, 10);
+        }
+    }
     return {
         id_producto: Number(row.id_producto),
         id_categoria: row.id_categoria ? Number(row.id_categoria) : null,
@@ -92,11 +100,12 @@ function normalizarProducto(row) {
         precio: Number(row.precio),
         stock,
         stock_minimo: stockMinimo,
+        activo: row.activo === undefined ? true : Boolean(row.activo),
         en_alerta: stock <= stockMinimo,
         brecha_reposicion: stock <= stockMinimo ? Math.max(stockMinimo * 2 - stock, stockMinimo - stock + 5) : 0,
         ubicacion: row.ubicacion_anaquel || 'Mostrador Principal · Nivel 1',
         lote: row.codigo_lote || 'LOT-GENERAL',
-        fecha_vencimiento: row.fecha_vencimiento ? String(row.fecha_vencimiento).slice(0, 10) : null
+        fecha_vencimiento: fechaVencStr
     };
 }
 
@@ -152,10 +161,12 @@ app.post('/api/login', async (req, res) => {
 // =========================================================================
 app.get('/api/productos', async (req, res) => {
     try {
+        const incluirInactivos = req.query?.incluirInactivos === 'true';
+        const whereClause = incluirInactivos ? '' : 'WHERE p.activo = 1';
         const sql = `
             SELECT p.id_producto, p.id_categoria, p.nombre, c.nombre AS categoria, 
-                   p.precio, p.stock, p.stock_minimo,
-                   l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
+                   p.precio, p.stock, p.stock_minimo, p.activo,
+                   l.codigo_lote, DATE_FORMAT(l.fecha_vencimiento, '%Y-%m-%d') AS fecha_vencimiento, l.ubicacion_anaquel
             FROM productos p
             LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
             LEFT JOIN lotes l ON l.id_lote = (
@@ -165,6 +176,7 @@ app.get('/api/productos', async (req, res) => {
                 ORDER BY (l2.stock_lote > 0) DESC, l2.fecha_vencimiento ASC, l2.id_lote ASC
                 LIMIT 1
             )
+            ${whereClause}
             ORDER BY p.nombre ASC;
         `;
         const [rows] = await pool.query(sql);
@@ -186,8 +198,8 @@ app.get('/api/alertas', async (req, res) => {
     try {
         const sql = `
             SELECT p.id_producto, p.id_categoria, p.nombre, c.nombre AS categoria, 
-                   p.precio, p.stock, p.stock_minimo,
-                   l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
+                   p.precio, p.stock, p.stock_minimo, p.activo,
+                   l.codigo_lote, DATE_FORMAT(l.fecha_vencimiento, '%Y-%m-%d') AS fecha_vencimiento, l.ubicacion_anaquel
             FROM productos p
             LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
             LEFT JOIN lotes l ON l.id_lote = (
@@ -197,7 +209,7 @@ app.get('/api/alertas', async (req, res) => {
                 ORDER BY (l2.stock_lote > 0) DESC, l2.fecha_vencimiento ASC, l2.id_lote ASC
                 LIMIT 1
             )
-            WHERE p.stock <= p.stock_minimo 
+            WHERE p.stock <= p.stock_minimo AND p.activo = 1
             ORDER BY p.stock ASC;
         `;
         const [rows] = await pool.query(sql);
@@ -375,8 +387,8 @@ app.put('/api/productos/:id/stock', async (req, res) => {
 
         const [rows] = await pool.execute(
             `SELECT p.id_producto, p.id_categoria, p.nombre, c.nombre AS categoria, 
-                    p.precio, p.stock, p.stock_minimo,
-                    l.codigo_lote, l.fecha_vencimiento, l.ubicacion_anaquel
+                    p.precio, p.stock, p.stock_minimo, p.activo,
+                    l.codigo_lote, DATE_FORMAT(l.fecha_vencimiento, '%Y-%m-%d') AS fecha_vencimiento, l.ubicacion_anaquel
              FROM productos p
              LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
              LEFT JOIN lotes l ON l.id_lote = (
@@ -400,6 +412,201 @@ app.put('/api/productos/:id/stock', async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Error interno al actualizar el stock del medicamento.'
+        });
+    }
+});
+
+// =========================================================================
+// ENDPOINT DE EDICIÓN DE FICHA TÉCNICA (PUT /api/productos/:id)
+// Actualiza nombre, categoría, precio, stock mínimo, lote y anaquel
+// =========================================================================
+app.put('/api/productos/:id', async (req, res) => {
+    try {
+        const idProducto = Number.parseInt(req.params.id, 10);
+        if (!Number.isInteger(idProducto) || idProducto <= 0) {
+            return res.status(400).json({ success: false, message: 'ID de producto inválido.' });
+        }
+
+        const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim() : '';
+        const categoria = typeof req.body?.categoria === 'string' ? req.body.categoria.trim() : '';
+        const precio = Number(req.body?.precio);
+        const stockMinimo = Number.parseInt(req.body?.stock_minimo, 10);
+        const ubicacion = typeof req.body?.ubicacion === 'string' ? req.body.ubicacion.trim() : '';
+        const lote = typeof req.body?.lote === 'string' ? req.body.lote.trim() : '';
+        const fechaVenc = typeof req.body?.fecha_vencimiento === 'string' ? req.body.fecha_vencimiento.trim() : '';
+
+        if (!nombre || nombre.length > 100) {
+            return res.status(400).json({ success: false, message: 'Nombre de medicamento obligatorio (máx. 100 caracteres).' });
+        }
+        if (!Number.isFinite(precio) || precio <= 0) {
+            return res.status(400).json({ success: false, message: 'El precio unitario debe ser mayor a S/ 0.00.' });
+        }
+        if (!Number.isInteger(stockMinimo) || stockMinimo < 1) {
+            return res.status(400).json({ success: false, message: 'El stock mínimo debe ser al menos 1.' });
+        }
+
+        // Resolver categoría
+        let idCategoria = null;
+        if (categoria) {
+            const [catRows] = await pool.execute('SELECT id_categoria FROM categorias WHERE nombre = ?;', [categoria]);
+            if (catRows.length > 0) {
+                idCategoria = catRows[0].id_categoria;
+            } else {
+                const [catResult] = await pool.execute('INSERT INTO categorias (nombre) VALUES (?);', [categoria]);
+                idCategoria = catResult.insertId;
+            }
+        }
+
+        // Actualizar tabla productos
+        if (idCategoria) {
+            await pool.execute(
+                'UPDATE productos SET nombre = ?, id_categoria = ?, precio = ?, stock_minimo = ? WHERE id_producto = ?;',
+                [nombre, idCategoria, Number(precio.toFixed(2)), stockMinimo, idProducto]
+            );
+        } else {
+            await pool.execute(
+                'UPDATE productos SET nombre = ?, precio = ?, stock_minimo = ? WHERE id_producto = ?;',
+                [nombre, Number(precio.toFixed(2)), stockMinimo, idProducto]
+            );
+        }
+
+        // Actualizar datos del lote principal si se proveyeron
+        if (ubicacion || lote || fechaVenc) {
+            const updates = [];
+            const params = [];
+            if (ubicacion) {
+                updates.push('ubicacion_anaquel = ?');
+                params.push(ubicacion);
+            }
+            if (lote) {
+                updates.push('codigo_lote = ?');
+                params.push(lote);
+            }
+            if (fechaVenc && /^\d{4}-\d{2}-\d{2}$/.test(fechaVenc)) {
+                updates.push('fecha_vencimiento = ?');
+                params.push(fechaVenc);
+            }
+
+            if (updates.length > 0) {
+                params.push(idProducto);
+                await pool.execute(
+                    `UPDATE lotes SET ${updates.join(', ')} WHERE id_producto = ? ORDER BY id_lote ASC LIMIT 1;`,
+                    params
+                );
+            }
+        }
+
+        // Devolver producto actualizado
+        const [rows] = await pool.execute(
+            `SELECT p.id_producto, p.id_categoria, p.nombre, c.nombre AS categoria, 
+                    p.precio, p.stock, p.stock_minimo, p.activo,
+                    l.codigo_lote, DATE_FORMAT(l.fecha_vencimiento, '%Y-%m-%d') AS fecha_vencimiento, l.ubicacion_anaquel
+             FROM productos p
+             LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+             LEFT JOIN lotes l ON l.id_lote = (
+                 SELECT l2.id_lote
+                 FROM lotes l2
+                 WHERE l2.id_producto = p.id_producto
+                 ORDER BY (l2.stock_lote > 0) DESC, l2.fecha_vencimiento ASC, l2.id_lote ASC
+                 LIMIT 1
+             )
+             WHERE p.id_producto = ?;`,
+            [idProducto]
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: `Ficha técnica de "${nombre}" actualizada correctamente.`,
+            producto: normalizarProducto(rows[0])
+        });
+    } catch (error) {
+        console.error('[PUT /api/productos/:id] Error:', error.message);
+        return res.status(500).json({ success: false, message: 'Error interno al actualizar la ficha del medicamento.' });
+    }
+});
+
+// =========================================================================
+// ENDPOINT DE BAJA / DESCONTINUAR O BORRADO SEGURO (DELETE /api/productos/:id)
+// Implementa Soft-Delete si tiene ventas o movimientos para proteger llaves foráneas.
+// =========================================================================
+app.delete('/api/productos/:id', async (req, res) => {
+    try {
+        const idProducto = Number.parseInt(req.params.id, 10);
+        const forzarDescargoMerma = req.body?.descargoMerma === true;
+
+        if (!Number.isInteger(idProducto) || idProducto <= 0) {
+            return res.status(400).json({ success: false, message: 'ID de producto inválido.' });
+        }
+
+        const [prodRows] = await pool.execute(
+            'SELECT id_producto, nombre, stock, activo FROM productos WHERE id_producto = ?;',
+            [idProducto]
+        );
+
+        if (prodRows.length === 0) {
+            return res.status(404).json({ success: false, message: 'El medicamento solicitado no existe.' });
+        }
+
+        const prod = prodRows[0];
+        const stockActual = Number(prod.stock);
+
+        // Bloqueo de seguridad si tiene existencias físicas y no se autorizó descargo
+        if (stockActual > 0 && !forzarDescargoMerma) {
+            return res.status(400).json({
+                success: false,
+                requiereDescargo: true,
+                stockActual,
+                message: `El medicamento "${prod.nombre}" aún cuenta con ${stockActual} unidades físicas en stock. Debe procesar primero el descargo por merma o caducidad para descontinuarlo.`
+            });
+        }
+
+        // Si se autorizó descargo por merma del stock restante
+        if (stockActual > 0 && forzarDescargoMerma) {
+            await pool.execute('UPDATE productos SET stock = 0 WHERE id_producto = ?;', [idProducto]);
+            await pool.execute('UPDATE lotes SET stock_lote = 0 WHERE id_producto = ?;', [idProducto]);
+            await pool.execute(
+                `INSERT INTO movimientos_kardex (id_producto, tipo_movimiento, cantidad, stock_anterior, stock_posterior, motivo_referencia)
+                 VALUES (?, 'AJUSTE_MERMA', ?, ?, 0, 'Descargo por baja / descontinuación de SKU');`,
+                [idProducto, stockActual, stockActual]
+            );
+        }
+
+        // Verificar si tiene historial en detalle_ventas o kardex para decidir Soft-Delete vs Hard-Delete
+        const [ventasRows] = await pool.execute(
+            'SELECT COUNT(*) AS total FROM detalle_ventas WHERE id_producto = ?;',
+            [idProducto]
+        );
+        const [kardexRows] = await pool.execute(
+            'SELECT COUNT(*) AS total FROM movimientos_kardex WHERE id_producto = ?;',
+            [idProducto]
+        );
+
+        const tieneVentas = Number(ventasRows[0].total) > 0;
+        const tieneKardex = Number(kardexRows[0].total) > 0;
+
+        if (tieneVentas || tieneKardex) {
+            // SOFT-DELETE: Desactivar para preservar la integridad referencial fiscal
+            await pool.execute('UPDATE productos SET activo = 0 WHERE id_producto = ?;', [idProducto]);
+            return res.status(200).json({
+                success: true,
+                tipo: 'SOFT_DELETE',
+                message: `Medicamento "${prod.nombre}" descontinuado exitosamente. Se preservó el historial de ventas y auditoría.`
+            });
+        } else {
+            // HARD-DELETE: No tiene ventas ni movimientos, se puede eliminar físicamente
+            await pool.execute('DELETE FROM lotes WHERE id_producto = ?;', [idProducto]);
+            await pool.execute('DELETE FROM productos WHERE id_producto = ?;', [idProducto]);
+            return res.status(200).json({
+                success: true,
+                tipo: 'HARD_DELETE',
+                message: `Medicamento "${prod.nombre}" eliminado físicamente del catálogo (sin registros vinculados).`
+            });
+        }
+    } catch (error) {
+        console.error('[DELETE /api/productos/:id] Error:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Error al procesar la baja del medicamento: ' + error.message
         });
     }
 });

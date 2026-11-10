@@ -820,15 +820,16 @@ export default function PosPage({ sesion, onInventoryMutated }) {
                         <img
                           src={imgProd}
                           alt={prod.nombre}
-                          width="76"
-                          height="76"
                           loading="lazy"
                           onError={(e) => {
                             e.currentTarget.src = '/favicon.svg';
                           }}
                         />
                         {itemEnTicket && (
-                          <span className="pos-cart-qty-pill">{itemEnTicket.cantidad} en ticket</span>
+                          <span className="pos-cart-qty-pill">
+                            <IconCheck size={11} />
+                            <span>En ticket: {itemEnTicket.cantidad}</span>
+                          </span>
                         )}
                       </div>
 
@@ -873,22 +874,54 @@ export default function PosPage({ sesion, onInventoryMutated }) {
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => agregarAlCarrito(prod)}
-                      disabled={agotado}
-                      className={`erp-btn ${agotado ? 'erp-btn-secondary' : 'erp-btn-primary'}`}
-                      style={{ width: '100%', minHeight: '38px' }}
-                    >
-                      {agotado ? (
-                        <span>Sin Existencias</span>
-                      ) : (
-                        <>
+                    {itemEnTicket ? (
+                      <div className="pos-card-stepper" role="group" aria-label={`Cantidad en ticket para ${prod.nombre}`}>
+                        <button
+                          type="button"
+                          className="pos-card-stepper-btn"
+                          onClick={() => ajustarCantidad(prod.id_producto, -1)}
+                          title="Restar 1 o quitar del ticket"
+                          aria-label="Restar 1 unidad"
+                        >
+                          <IconMinus size={15} />
+                        </button>
+                        <div className="pos-card-stepper-info">
+                          <span className="pos-card-stepper-val">{itemEnTicket.cantidad}</span>
+                          <span className="pos-card-stepper-lbl">en ticket</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="pos-card-stepper-btn"
+                          onClick={() => ajustarCantidad(prod.id_producto, 1)}
+                          disabled={itemEnTicket.cantidad >= stockNum}
+                          title={
+                            itemEnTicket.cantidad >= stockNum
+                              ? 'Tope de existencias físicas alcanzado'
+                              : 'Sumar 1 unidad al ticket'
+                          }
+                          aria-label="Sumar 1 unidad"
+                        >
                           <IconPlus size={15} />
-                          <span>Agregar al Ticket</span>
-                        </>
-                      )}
-                    </button>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => agregarAlCarrito(prod)}
+                        disabled={agotado}
+                        className={`erp-btn ${agotado ? 'erp-btn-secondary' : 'erp-btn-primary'}`}
+                        style={{ width: '100%', minHeight: '38px' }}
+                      >
+                        {agotado ? (
+                          <span>Sin Existencias</span>
+                        ) : (
+                          <>
+                            <IconPlus size={15} />
+                            <span>Agregar al Ticket</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </article>
                 );
               })}
